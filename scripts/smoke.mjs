@@ -1,5 +1,6 @@
 // maid-scenery 冒烟测试：注入行生成、顺序、内容完整、失败路径。
-import { apply, name, inject } from './index.js';
+// 从仓库根运行：node scripts/smoke.mjs
+import { apply, name, inject } from '../index.js';
 import { readFileSync } from 'node:fs';
 
 let pass = 0, fail = 0;
@@ -35,8 +36,12 @@ try { ctx._handler('not-array'); ctx._handler(null); } catch { threw = true; }
 check('坏 table 静默跳过', !threw);
 
 // 运行时文件与注入内容一致
-const css = readFileSync('./runtime/scenery.css', 'utf8');
+const css = readFileSync(new URL('../runtime/scenery.css', import.meta.url), 'utf8');
 check('css 文件与注入一致', table[0]?.text === css);
+check('css 隐去可信模式徽章', /#vcp-trusted-toggle\s*\{[^}]*display:\s*none/.test(css));
+check('script 默认打开可信模式', /raw-html\.trusted/.test(table[1]?.text ?? ''));
+check('script 按 id 找面板（不带 class）', /#dsvs-knobs/.test(table[1]?.text ?? ''));
+check('script 用面板自带 preset 类', /dsvs-knobs-preset/.test(table[1]?.text ?? ''));
 
 console.log(`\n${pass} PASS / ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

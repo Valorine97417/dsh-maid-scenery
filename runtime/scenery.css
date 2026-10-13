@@ -6,15 +6,22 @@
  *   ② dsh-video-skin 的视频层 #dsvs-backdrop（z-index:-1）
  *   ③ 主题立绘 [data-skin-chrome=character-stage]（z-index:0）与应用内容
  *
- * 本文件干两件事：
+ * 本文件干三件事：
  *   A. 把 ② 的不透明兜底色（#0e1116 / #eef1f5）改透明——静态画因此沉到视频层
  *      后面：视频播放时盖住画，视频未就绪/淡出时透出画，两全。
  *   B. body[data-maid-scenery="art"]（面板切到「静态画」时由 scenery.js 挂上）
  *      把视频层与它的 veil 整体淡出，只留静态画。
+ *   C. 杂事：隐去 raw-html 的可信模式徽章（它与视频皮肤面板的圆钮同位重叠）。
+ *      可信模式本身由 scenery.js 写 localStorage 默认打开，渲染层每次现读，
+ *      与该 DOM 无关——隐掉不损失功能。
  *
  * 所有规则都以 #dsvs-backdrop 为锚——该元素只有 dsh-video-skin 在场才存在；
  * B 组的 data 属性只有本插件运行时脚本在场才会出现。主题缺席时 body 没有画，
  * 透明化也无副作用（露出的是应用自身底色）。三条链各自成立，互不牵连。
+ *
+ * 明暗不在这里切换：maid-atelier 与 dsh-video-skin 两家都只跟随宿主的
+ * body[data-ds-dark-theme]，亮/暗由 DSH 自己的「设置 → 通用 → 外观」决定，
+ * 皮肤只负责各自主题下的配色。本文件因此只补两家都没顾上的可读性缺口。
  */
 
 /* ── A. 静态画沉到视频层后面 ── */
@@ -30,10 +37,18 @@ body[data-maid-scenery="art"] #dsvs-backdrop-veil {
   transition: opacity 600ms ease;
 }
 
-/* 面板按钮行（scenery.js 注入，复用视频皮肤面板的 row/label/pill 类，视觉无缝）。 */
-.dsvs-knobs-row[data-scenery-switch] .dsvs-knobs-pill {
+/* ── C. 可信模式徽章：隐去（功能不受影响，见文件头） ── */
+#vcp-trusted-toggle {
+  display: none !important;
+}
+
+/* ── D. 「背景画面」行（scenery.js 注入） ── */
+/* 复用视频皮肤自己的 .dsvs-knobs-presets / .dsvs-knobs-preset 类，那套类名
+   自带暗色与亮色两套规则；这里只补键盘可达性与选中态描边。 */
+.dsvs-knobs-row[data-scenery-switch] .dsvs-knobs-preset {
   cursor: pointer;
 }
-.dsvs-knobs-row[data-scenery-switch] .dsvs-knobs-pill[aria-pressed="true"] {
+.dsvs-knobs-row[data-scenery-switch] .dsvs-knobs-preset:focus-visible {
   outline: 1px solid currentColor;
+  outline-offset: 1px;
 }

@@ -2,9 +2,11 @@
  * dsh-maid-scenery — 页面侧运行时（注入 <body>，早于应用模块脚本执行）。
  *
  * 职责：
- *   ① 在视频皮肤「聊天背景」面板（.dsvs-knobs）里加一行「背景画面」切换
+ *   ① 在视频皮肤「聊天背景」面板（#dsvs-knobs）里加一行「背景画面」切换
  *      （视频 / 静态画），选择持久化到 localStorage，失败退会话内存；
- *   ② 把当前模式写成 body[data-maid-scenery]，CSS 据此淡出视频层。
+ *   ② 把当前模式写成 body[data-maid-scenery]，CSS 据此淡出视频层；
+ *   ③ 杂事：raw-html 可信模式默认打开（徽章由 scenery.css 隐去——它与视频
+ *      皮肤面板的圆钮同位重叠）。
  *
  * 生存法则（抄视频皮肤的头注释契约）：
  *   - 本文件任何一行都不许在求值期抛异常：所有入口包 try/catch，出错就安静待命，
@@ -17,6 +19,7 @@
   'use strict';
   try {
     const KEY = 'dsh-maid-scenery-mode';
+    const TRUST_KEY = 'raw-html.trusted';
     const read = () => {
       try { return localStorage.getItem(KEY); } catch { return window.__maidSceneryMode ?? null; }
     };
@@ -25,18 +28,29 @@
     };
     let mode = read() === 'art' ? 'art' : 'video';
 
+    // ── 杂事：可信模式默认打开 ──
+    // 渲染层每次都现读 localStorage（isTrusted()），所以这一笔立刻生效；
+    // 徽章本身的隐藏交给 scenery.css 的 display:none !important。
+    try {
+      if (localStorage.getItem(TRUST_KEY) !== '1') localStorage.setItem(TRUST_KEY, '1');
+    } catch { /* 私密模式/配额失败：维持宿主默认，不添乱 */ }
+
     const applyMode = () => {
       try {
+        if (!document.body) return false;
         if (mode === 'art') document.body.setAttribute('data-maid-scenery', 'art');
         else document.body.removeAttribute('data-maid-scenery');
-      } catch { /* body 未就绪时静默，observer 会补 */ }
+        return true;
+      } catch { return false; }
     };
     applyMode();
 
+    const pills = (row) => row.querySelectorAll('[data-scenery-mode]');
+
     const syncPills = (row) => {
-      const pills = row.querySelectorAll('.dsvs-knobs-pill');
-      for (const p of pills) {
+      for (const p of pills(row)) {
         const want = p.getAttribute('data-scenery-mode') === mode;
+        p.setAttribute('data-active', want ? '1' : '0');
         p.setAttribute('aria-pressed', want ? 'true' : 'false');
       }
     };
@@ -45,17 +59,25 @@
       const row = document.createElement('div');
       row.className = 'dsvs-knobs-row';
       row.setAttribute('data-scenery-switch', '');
-      const label = document.createElement('span');
+
+      const label = document.createElement('div');
       label.className = 'dsvs-knobs-label';
-      label.textContent = '背景画面';
+      const text = document.createElement('span');
+      text.textContent = '背景画面';
+      label.appendChild(text);
       row.appendChild(label);
-      const mk = (m, text) => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'dsvs-knobs-pill';
+
+      // 复用视频皮肤自己的 .dsvs-knobs-presets / .dsvs-knobs-preset：
+      // 那套类名自带暗色与亮色两套规则，视觉与面板其余按钮无缝。
+      const group = document.createElement('div');
+      group.className = 'dsvs-knobs-presets';
+      const mk = (m, caption) => {
+        const b = document.createElement('div');
+        b.className = 'dsvs-knobs-preset';
+        b.setAttribute('role', 'button');
+        b.setAttribute('tabindex', '0');
         b.setAttribute('data-scenery-mode', m);
-        b.setAttribute('aria-pressed', m === mode ? 'true' : 'false');
-        b.textContent = text;
+        b.textContent = caption;
         b.addEventListener('click', () => {
           mode = m;
           write(m);
@@ -64,17 +86,27 @@
         });
         return b;
       };
-      row.appendChild(mk('video', '视频'));
-      row.appendChild(mk('art', '静态画'));
+      group.appendChild(mk('video', '视频'));
+      group.appendChild(mk('art', '静态画'));
+      row.appendChild(group);
+
+      syncPills(row);
       return row;
     };
 
+    const findPanel = () => {
+      // 视频皮肤的面板只带 id、没有 class（CSS 也全走 #dsvs-knobs），
+      // 所以必须按 id 找；顺带兼容将来万一补上 class 的版本。
+      try { return document.querySelector('#dsvs-knobs') || document.querySelector('.dsvs-knobs'); }
+      catch { return null; }
+    };
+
     const tryMount = () => {
-      const panel = document.querySelector('.dsvs-knobs');
+      const panel = findPanel();
       if (!panel) return false;
       if (panel.querySelector('[data-scenery-switch]')) return true; // 已注入
-      const firstRow = panel.querySelector('.dsvs-knobs-row');
       const row = buildRow();
+      const firstRow = panel.querySelector('.dsvs-knobs-row');
       if (firstRow && firstRow.parentNode === panel) panel.insertBefore(row, firstRow);
       else panel.appendChild(row);
       return true;
@@ -85,6 +117,7 @@
     // 面板还没出现：观察 DOM 直到挂上，挂上即收工断开。
     try {
       const mo = new MutationObserver(() => {
+        applyMode(); // body 可能刚刚才就绪
         if (tryMount()) {
           try { mo.disconnect(); } catch { /* ignore */ }
         }

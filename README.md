@@ -1,13 +1,16 @@
 # dsh-maid-scenery
 
-视频背景 × 深海女仆工坊的**融合层**插件——把 [maid-atelier](https://github.com/flaricy/maid-atelier-ui-bundle) 主题与 [dsh-video-skin](https://github.com/Something11235/dsh-video-skin) 的聊天背景捏合成一套可切换的场景。
+视频背景 × 深海女仆工坊的**融合层**插件——把 [maid-atelier](https://github.com/Small-tailqwq/dsh-deep-whale) 主题与 [dsh-video-skin](https://github.com/Something11235/dsh-video-skin) 的聊天背景捏合成一套可切换的场景。
 
 ## 干什么
 
 两家插件各自为政时：主题的静态工坊画铺在 body，视频皮肤的不透明兜底色把它整个盖住——要么有画没视频，要么有视频没画。本插件做两件事：
 
 1. **静态画沉底**：把视频层的不透明兜底色改透明。视频播放时盖住画，视频未就绪/淡出时透出画，无缝衔接；
-2. **面板加开关**：在视频皮肤右下角「聊天背景」面板里注入一行**背景画面**（视频 / 静态画），一键切换，选择持久化（localStorage，失败退会话内存）。切到静态画时视频层整体淡出（opacity，不销毁解码器，切回不闪不重载）。
+2. **面板加开关**：在视频皮肤右下角「聊天背景」面板里注入一行**背景画面**（视频 / 静态画），一键切换，选择持久化（localStorage，失败退会话内存）。切到静态画时视频层整体淡出（opacity，不销毁解码器，切回不闪不重载）；
+3. **顺手的杂事**：把 dsh-raw-html 的「可信模式」默认打开，并隐去它那个固定右下角的徽章——徽章与视频皮肤面板的圆钮同位重叠，看着像按钮打架。可信模式的判定每次现读 localStorage，隐掉徽章不影响功能。
+
+**明暗背景不在这里切**：maid-atelier 与 dsh-video-skin 两家都只跟随宿主的 `body[data-ds-dark-theme]`，亮/暗由 DSH 自己的「设置 → 通用 → 外观」决定，两家各自备了双套配色。本插件只补两家都没顾上的可读性缺口。
 
 ## 安装
 
@@ -15,11 +18,13 @@
 # 主题与视频皮肤都是直接依赖，一条命令全装上（profile 名按实际替换）
 dsh plugin --profile desktop add \
   "github:Valorine97417/dsh-maid-scenery" \
-  "github:flaricy/maid-atelier-ui-bundle#path:/plugins/maid-atelier" \
+  "github:Small-tailqwq/dsh-deep-whale#main&path:/maid-atelier" \
   "github:Something11235/dsh-video-skin"
 ```
 
 装完重启 DSH。为什么主题不做成本包依赖：pnpm 的 `blockExoticSubdeps` 供应链策略禁止 git 协议依赖藏在子依赖里（本包 v0.1.0 就撞过），所以主题降为 optional peer——**三条链全部条件化**，两家插件谁缺席本包规则都自动失效，不误伤。
+
+主题用原作者的仓库（Small-tailqwq/dsh-deep-whale），不用二手搬运版：`skin.json` 里的 `id` 与 `wiring.id` 两版相同，装在一起会打架，换源时先卸旧的。
 
 ## 设计约束（都来自视频皮肤踩过的坑）
 
