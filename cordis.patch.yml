@@ -1,7 +1,7 @@
 # dsh-maid-scenery bundle patch
-# 融合层：只插本插件自身行。
-# maid-atelier 主题与 dsh-video-skin 都由 profile 直接安装（各自的 bundle patch 插自己的行）；
-# 本包的规则全部条件化——两家谁缺席都自动失效，不误伤。
+# 整合版：只插本插件自身行。
+# v0.2.0 起 maid-atelier 主题与 dsh-video-skin 已随本包分发（vendor/ 下零修改内置，
+# 由 index.js / client.js 在运行时装配），profile 里不再需要单独安装它们。
 - insert:
     - id: maid-scenery
       name: 'dsh-maid-scenery'

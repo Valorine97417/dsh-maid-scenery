@@ -1,7 +1,7 @@
 {
   "name": "dsh-maid-scenery",
-  "description": "视频背景×深海女仆工坊的融合层：静态工坊画与视频背景互斥显隐，聊天背景面板加「视频/静态画」切换。依赖 maid-atelier 主题与 dsh-video-skin，装一个包两者合体。",
-  "version": "0.1.4",
+  "description": "深海女仆工坊 · 整合版：视频背景、静态画主题、融合切换三合一。装一个包，配套全在包里，卸载其它插件也不影响。",
+  "version": "0.2.0",
   "type": "module",
   "main": "index.js",
   "license": "MIT",
@@ -12,32 +12,38 @@
     "skin",
     "maid-atelier",
     "video-skin",
-    "backdrop"
+    "backdrop",
+    "scenery"
   ],
   "files": [
     "index.js",
+    "client.js",
     "runtime",
+    "vendor",
     "cordis.patch.yml",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "LICENSE-ARTWORK",
+    "NOTICE",
+    "LICENSE-upstream"
   ],
   "exports": {
     ".": "./index.js",
+    "./client": "./client.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "^4.0.1",
-    "@smalltailqwq/dsh-client-ui-skin-maid-atelier": "github:Small-tailqwq/dsh-deep-whale#main&path:/maid-atelier"
-  },
-  "peerDependenciesMeta": {
-    "@smalltailqwq/dsh-client-ui-skin-maid-atelier": {
-      "optional": true
-    }
+    "@deepseek-ai/cordis": "^4.0.1"
   },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [],
+      "immediately": true
     }
   }
 }

@@ -1,3 +1,29 @@
+# Licensing scope
+
+本仓库（dsh-maid-scenery）是**整合发行包**：除自有代码外，还随包分发两份上游作品。
+三层各自的许可边界如下，互不覆盖。
+
+| 层 | 位置 | 代码许可 | 素材许可 |
+| --- | --- | --- | --- |
+| 融合层（自有） | `index.js`、`client.js`、`runtime/` | MIT（见下） | — |
+| 视频层（上游 dsh-video-skin） | `vendor/video-skin/` | MIT，Copyright (c) 2026 Something11235 | 视频素材随 MIT 分发（上游即为 MIT） |
+| 主题层（上游 maid-atelier） | `vendor/maid-atelier/` | MIT，Copyright (c) 2026 Small-tailqwq | **CC BY-NC-SA 4.0**（见 LICENSE-ARTWORK 与 NOTICE） |
+
+**Project-owned software code is licensed under the MIT License below.** 这包括源代码、
+脚本、配置与生成产物的代码部分。
+
+**Artwork（美术素材）不适用 MIT。** 凡属 maid-atelier 的角色形象、立绘、背景、图标、
+preview、装饰素材及其嵌入/转换副本（含内联进 CSS、data URL、`client.js` 的形态），
+版权保留在各自权利人手中，适用 CC BY-NC-SA 4.0：署名 + 非商业性使用 + 相同方式共享。
+**Bundling artwork into source code, CSS, data URLs, or lib/ does not change its license.**
+完整署名链见 `NOTICE`，许可正文见 `LICENSE-ARTWORK`，上游原始声明见
+`vendor/maid-atelier/LICENSE-upstream`。
+
+上游三创署名与 `NOTICE` 一并保留，未因整合而移除。本声明不撤销此前已发行版本
+已授予的许可。
+
+---
+
 MIT License
 
 Copyright (c) 2026 Valorine97417

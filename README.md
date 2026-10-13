@@ -1,6 +1,6 @@
 # dsh-maid-scenery
 
-视频背景 × 深海女仆工坊的**融合层**插件——把 [maid-atelier](https://github.com/Small-tailqwq/dsh-deep-whale) 主题与 [dsh-video-skin](https://github.com/Something11235/dsh-video-skin) 的聊天背景捏合成一套可切换的场景。
+视频背景 × 深海女仆工坊的**整合版**插件——把 [maid-atelier](https://github.com/Small-tailqwq/dsh-deep-whale) 主题与 [dsh-video-skin](https://github.com/Something11235/dsh-video-skin) 的聊天背景捏合成一套可切换的场景。**v0.2.0 起两家配套已随包分发**：装这一个包就够，卸载它们也不影响本插件工作。
 
 ## 干什么
 
@@ -16,28 +16,43 @@
 
 **为什么亮色写死实度、不读视频皮肤的 `--dsvs-l-*`**：那两个变量是按"底色纯白"的假设定的（surface 0.45 / layer1 0.55），叠在亮壁纸上正是过亮的一半成因；读它等于把问题带回来。亮色下由本插件接管是刻意的——视频皮肤的旋钮在暗色下照旧完全有效。
 
-## 安装
+## 装什么、在哪
+
+**只需要装本插件一个包**（v0.2.0 起）：
 
 ```bash
-# 主题与视频皮肤都是直接依赖，一条命令全装上（profile 名按实际替换）
-dsh plugin --profile desktop add \
-  "github:Valorine97417/dsh-maid-scenery" \
-  "github:Small-tailqwq/dsh-deep-whale#main&path:/maid-atelier" \
-  "github:Something11235/dsh-video-skin"
+dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
 ```
 
-装完重启 DSH。为什么主题不做成本包依赖：pnpm 的 `blockExoticSubdeps` 供应链策略禁止 git 协议依赖藏在子依赖里（本包 v0.1.0 就撞过），所以主题降为 optional peer——**三条链全部条件化**，两家插件谁缺席本包规则都自动失效，不误伤。
+装完重启 DSH。包内结构：
 
-主题用原作者的仓库（Small-tailqwq/dsh-deep-whale），不用二手搬运版：`skin.json` 里的 `id` 与 `wiring.id` 两版相同，装在一起会打架，换源时先卸旧的。
+| 目录 | 是什么 | 上游 |
+| --- | --- | --- |
+| `index.js` / `client.js` / `runtime/` | 融合层本体（本仓库自有代码，MIT） | — |
+| `vendor/video-skin/` | 视频层：开机动画、聊天背景视频、「聊天背景」面板与路由 | dsh-video-skin v0.1.1（MIT） |
+| `vendor/maid-atelier/` | 主题层：静态工坊画、蕾丝、Q 版侧栏、31 个哈希素材 | maid-atelier v0.1.7（代码 MIT / 美术 CC BY-NC-SA 4.0） |
+
+**两家上游以零修改形态内置**（仅去除源映射注释），由本包在运行时装配：宿主半边在 `index.js` 里依次调用两家的 `apply`，客户端半边在 `client.js` 里物化 maid-atelier 的浏览器模块。视频层的前端不走 `dsh.client`——照旧由宿主半边经 `webserver/index-inject` 注入。
+
+**装过旧版配套的要先卸掉**：如果 profile 里还装着 `@smalltailqwq/dsh-client-ui-skin-maid-atelier` 或 `dsh-video-skin`，请先 `dsh plugin --profile desktop remove` 掉——两套同样的东西同时在场会重复注入、互相打架（`skin.json` 的 `id` 与 `wiring.id` 两版相同）。
+
+**为什么要整合**：pnpm 的 `blockExoticSubdeps` 供应链策略禁止 git 协议依赖藏在子依赖里（本包 v0.1.0 就撞过），上游主题只能降为 optional peer——那样「装一个包」就永远做不到，三家谁缺席都要用户自己排查。整合后依赖关系只剩一条，规则也不再需要条件化。
 
 ## 设计约束（都来自视频皮肤踩过的坑）
 
 - 注入行只推 `kind:'style'` 与 `kind:'script'`，绝不推 `script-src`（后者失败会打掉 `__DSH_BOOT_READY__`，整个应用起不来）；
 - `apply` 同步注册 `webserver/index-inject` 订阅，不依赖任何服务就绪（桌面壳的注入表启动时收集一次，晚订阅没有刷新路径）；
 - 运行时脚本任何一步出错都安静待命——装饰品没有资格让页面变红；
-- 不假设两家插件在场：CSS 以 `#dsvs-backdrop` 为锚（视频皮肤缺席则规则空转），切换按钮由 MutationObserver 等面板出现再注入（10 分钟上界后放弃观察）。
+- 装配顺序有意为之：先视频层再融合层（`webserver/index-inject` 按监听器注册顺序入表），保持整合前三家独立包时的层叠关系；
+- 两家的 `apply` 各自包 `try`——一家挂了不拖死另一家，融合层的切换行照旧可用。
 
 ## 变更
+
+### 0.2.0
+
+- **整合两家配套随包分发**：`vendor/video-skin/` 与 `vendor/maid-atelier/` 零修改内置，装一个包全齐，卸载配套插件也不影响。宿主半边由 `index.js` 装配，客户端半边由 `client.js` 物化。上游主题的 optional peer 依赖随之删除。
+- **移除商业版权音频**：视频皮肤上游 `assets/` 只有 `boot.mp4` 与 `background.mp4`；本机曾额外放入 4 个 C418 的 `.flac`，未随包分发。
+- **双许可结构**：本包代码 MIT；`vendor/maid-atelier/` 的美术素材仍为上游声明的 CC BY-NC-SA 4.0，署名链完整保留在 `NOTICE`，许可正文在 `LICENSE-ARTWORK`，上游原始声明在 `vendor/maid-atelier/LICENSE-upstream`。
 
 ### 0.1.4
 
@@ -55,7 +70,7 @@ dsh plugin --profile desktop add \
 
 ### 0.1.1
 
-- 主题降为 optional peer + patch 只插自身行——绕开 pnpm `blockExoticSubdeps` 对子依赖 git 协议的封禁。
+- 主题降为 optional peer + patch 只插自身行——绕开 pnpm `blockExoticSubdeps` 对子依赖 git 协议的封禁。（0.2.0 起此约束已随整合消失。）
 
 ### 0.1.0
 
@@ -63,4 +78,15 @@ dsh plugin --profile desktop add \
 
 ## 许可
 
-MIT（本插件代码）。注意：maid-atelier 的美术资产为上游声明的 CC BY-NC-SA 4.0，本仓库**不复制、不再分发**任何美术资产，仅以 git 依赖引用原作者仓库。
+**本包自有代码：MIT**（Copyright (c) 2026 Valorine97417），见 `LICENSE`。
+
+**随包分发的两家上游产物**（三层边界互不覆盖，完整说明见 `LICENSE`）：
+
+| 层 | 代码 | 素材 |
+| --- | --- | --- |
+| `vendor/video-skin/`（dsh-video-skin v0.1.1） | MIT · Copyright (c) 2026 Something11235 | 视频随 MIT 分发 |
+| `vendor/maid-atelier/`（maid-atelier v0.1.7） | MIT · Copyright (c) 2026 Small-tailqwq | **CC BY-NC-SA 4.0** |
+
+**maid-atelier 的美术素材不是 MIT**：角色形象、立绘、背景、图标、preview、装饰素材及其嵌入/转换副本（含内联进 CSS、data URL、`client.js` 的形态）版权保留在各自权利人手中，适用 **CC BY-NC-SA 4.0**——署名必须保留完整创作链、仅限非商业性使用、衍生作品必须以相同方式共享。署名链（一创 **上善** → 二创 **ZipZipPipe** → 三创 **Small-tailqwq**）完整保留在 [`NOTICE`](NOTICE)，许可正文在 [`LICENSE-ARTWORK`](LICENSE-ARTWORK)，上游原始混合声明在 `vendor/maid-atelier/LICENSE-upstream`。
+
+本包只做运行时装配，不改变任何上游作品的许可，也不表示上游作者对本包作出背书。

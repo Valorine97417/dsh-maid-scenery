@@ -1,0 +1,69 @@
+dsh-maid-scenery（深海女仆工坊 · 整合发行包）
+================================================
+
+本包整合并随包分发两份上游作品。依 CC BY-NC-SA 4.0 的署名 (Attribution) 与
+相同方式共享 (ShareAlike) 要求，完整创作链与代码作者全部列于此处。
+
+一、融合层（本包自有代码）
+------------------------------------------------
+dsh-maid-scenery —— MIT。Copyright (c) 2026 Valorine97417。
+内容：`index.js`（宿主半边装配）、`client.js`（客户端物化）、`runtime/`
+（互斥显隐规则与「视频 / 静态画」切换行）。
+
+二、视频层（vendor/video-skin/）
+------------------------------------------------
+上游：dsh-video-skin v0.1.1 —— MIT。Copyright (c) 2026 Something11235。
+来源：https://github.com/Something11235/dsh-video-skin
+内容：开机动画覆盖层、聊天背景视频、右下角「聊天背景」面板及其路由
+（`vendor/video-skin/index.host.js`、`lib/`、`runtime/`、`assets/`）。
+许可正文见 `vendor/video-skin/LICENSE`。
+
+**已移除的内容**：上游 `assets/` 目录只有 `boot.mp4` 与 `background.mp4` 两个文件；
+本机曾额外放入 4 个 C418 的 `.flac` 音乐（商业版权音频），**未随包分发、已排除**。
+
+三、主题层（vendor/maid-atelier/）
+------------------------------------------------
+上游：@smalltailqwq/dsh-client-ui-skin-maid-atelier v0.1.7 —— 代码 MIT，
+美术素材 CC BY-NC-SA 4.0。Copyright (c) 2026 Small-tailqwq。
+来源：https://github.com/Small-tailqwq/dsh-deep-whale（`maid-atelier/`）
+许可正文见 `LICENSE-ARTWORK`；上游原始混合声明见
+`vendor/maid-atelier/LICENSE-upstream`。
+
+美术素材为**三创衍生**，署名链如下（不得省略）：
+
+1. 一创 (initial creation)：**上善** —— 鲸鱼娘 (whale-girl) 角色形象的原作者。
+   个人主页：https://www.pixiv.net/users/62155430
+   The original whale-girl character design.
+
+2. 二创 (secondary creation)：**ZipZipPipe** —— 在上善的鲸鱼娘形象基础上加入
+   DeepSeek 元素的女仆鲸鱼娘 (maid whale-girl) 二次设计（生成模型：GPT Image 2）。
+   个人主页：https://www.pixiv.net/users/18604994
+   The maid whale-girl redesign adding DeepSeek elements, based on 上善's
+   whale-girl (generated with GPT Image 2).
+
+3. 三创 (this skin)：**Small-tailqwq**（dsh-external/dsh-deep-whale）—— 本皮肤
+   使用的素材为该形象的 DeepSeek 元素再设计。
+   The DeepSeek-element secondary design used in this skin.
+
+   启动错误页立绘（上游 `assets/boot-error/`，2026-09-06）：根据用户提供的上述
+   双角色参考图，使用 OpenAI imagegen 重新生成，采用本地洋红抠图制作透明层。
+   角色设计沿用以上署名链；生成提示词与处理方式见上游该目录 `PROMPTS.md`。
+
+   网页与应用图标（上游 `assets/icons/`，2026-09-07）：由 Small-tailqwq 提供三张
+   鲸鱼娘表情原图；保留原图，通过本地脚本抠除浅色背景并处理边缘，等比缩放及
+   透明留边生成 PNG / ICO，沿用以上署名链。处理脚本为
+   `scripts/build-maid-icons.py`。插件菜单图标 `assets/plugin-icon.png` 为其中
+   delighted-192.png 的原字节副本。
+
+美术素材使用条款（`LICENSE-ARTWORK`）：CC BY-NC-SA 4.0 —— 署名 (attribution)
+必须保留以上完整创作链；非商业性使用 (non-commercial only)；衍生作品必须以
+相同方式共享 (share-alike)。
+
+软件代码适用 `LICENSE`（MIT）。美术素材版权保留在上述各自作者手中，
+**包括嵌入与转换后的副本**（含内联进 CSS、data URL 与 `client.js` 的形态）。
+
+四、整合方式声明
+------------------------------------------------
+上述两家上游产物以**零修改**形态置于 `vendor/` 下（仅去除源映射注释），
+由本包 `index.js` / `client.js` 在运行时装配。整合不改变任何上游作品的许可，
+也不表示上游作者对本包作出背书。
