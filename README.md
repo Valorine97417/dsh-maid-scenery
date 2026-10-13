@@ -37,6 +37,30 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
 
 **装过旧版配套的要先卸掉**：如果 profile 里还装着 `@smalltailqwq/dsh-client-ui-skin-maid-atelier` 或 `dsh-video-skin`，请先 `dsh plugin --profile desktop remove` 掉——两套同样的东西同时在场会重复注入、互相打架（`skin.json` 的 `id` 与 `wiring.id` 两版相同）。
 
+## 背景音乐（自备，不入库）
+
+视频背景的画面与声音是分开的：`background.mp4` 本身静音，音乐由一条独立的 `<audio>` 循环播放。上游 `assets/` 只带 `boot.mp4` 与 `background.mp4`——**音频由使用者自备**。C418 这类商业版权曲目不进仓库（`.gitignore` 已按扩展名把包内音频挡在 git 索引之外）：本地放着听没问题，**跟着包推上去才是再分发**。
+
+放一首进 `vendor/video-skin/assets/`，再让 `$DSH_HOME/dsh-video-skin.json` 指过去，刷新页面即生效（配置每次请求重读，不必重启 DSH）：
+
+```json
+{
+  "background": {
+    "music": "assets/Wet Hands - C418.flac",
+    "musicVolume": 0.25
+  }
+}
+```
+
+- `music` 写空字符串 = 不开音乐；文件不在盘上只让这一项降级（日志一条 warning），别的功能照旧。
+- **`assets/` 下的音频会自动组成播放列表**（`music` 指的那首排头，其余按文件名跟随），一首放完自动下一首、到尾回卷——丢几首进去就是一张循环歌单。
+- 音量既能写 `musicVolume`，也能用右下角面板的滑块调（默认 `0.25`，垫底氛围，不压聊天）。
+- 桌面版（Electron）允许未静音自动播放，刷新即有声音；浏览器形态（`dsh web`）可能拦下自动播放，那时静音降级，不扣住用户。
+- **面板里有这一行**：聊天背景面板（右下角圆钮）底部多了「背景音乐」——左边直接报目录里有几首（「目录为空」就是还没放歌），右侧两个按钮：
+  - 「播放 / 暂停」起停那条 `<audio>`。自动播放被策略拦下时，这一次点击就是那个"用户手势"，音乐能靠它回来；
+  - 「打开音乐位置」拉起系统文件管理器（资源管理器 / Finder / xdg-open）直接落到 `assets/` 目录，目录不存在会先建出来。
+  两个端点由本包宿主半边提供：`/dsh-maid-scenery/music.json`（报目录与曲目清单）、`/dsh-maid-scenery/open-music-folder`（只认 POST，免得页面一加载就被预取弹窗）。
+
 **皮肤管理器怎么还认得出**：皮肤管理器（`@smalltailqwq/dsh-client-ui-skin-deep-whale-manager`）只从 profile 的依赖里找带 `skin.json` 的包，且要求清单里的 `package` 字段等于已装包名。整合后 maid-atelier 不再是独立依赖，所以本包**在包根自曝一份 `skin.json`**：`id` 仍写 `maid-atelier`（换源时「先卸旧主题」的规则不变），`package` 改成本包名，`wiring.id` 对齐本包自己的 patch entry `maid-scenery`，`preview` 与 `desktopIcon` 指到 `vendor/maid-atelier/` 下。于是面板里照旧显示「深海女仆工坊」与它的定制控件。
 
 > 已知边界：皮肤管理器的「切换」开关管的是 `maid-scenery` 这一条 entry 的 `disabled`。由于主题本来就是本包的一部分（随 `client.js` 常驻物化），把它关掉只会停掉融合层的切换行，不会卸掉主题本身——真正的「换成别的皮肤」要等上游支持包内皮肤再补。当前本机只有这一套皮肤，不影响使用。
@@ -57,7 +81,7 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
 
 - **整合两家配套随包分发**：`vendor/video-skin/` 与 `vendor/maid-atelier/` 零修改内置，装一个包全齐，卸载配套插件也不影响。宿主半边由 `index.js` 装配，客户端半边由 `client.js` 物化。上游主题的 optional peer 依赖随之删除。
 - **包根自曝 `skin.json`**：整合后 maid-atelier 不再是独立依赖，皮肤管理器便发现不到它。现在本包自己声明皮肤清单（`package` 指向本包、`wiring.id` 对齐 `maid-scenery`），「皮肤管理」面板重新显示「深海女仆工坊」。
-- **移除商业版权音频**：视频皮肤上游 `assets/` 只有 `boot.mp4` 与 `background.mp4`；本机曾额外放入 4 个 C418 的 `.flac`，未随包分发。
+- **商业版权音频不入库**：视频皮肤上游 `assets/` 只有 `boot.mp4` 与 `background.mp4`；本机曾额外放入 4 个 C418 的 `.flac`，整合时按扩展名挡在 **git 索引**之外（本地自用照旧，不进仓库即不构成再分发）。怎么配自己的背景音乐见上节「背景音乐（自备，不入库）」。
 - **双许可结构**：本包代码 MIT；`vendor/maid-atelier/` 的美术素材仍为上游声明的 CC BY-NC-SA 4.0，署名链完整保留在 `NOTICE`，许可正文在 `LICENSE-ARTWORK`，上游原始声明在 `vendor/maid-atelier/LICENSE-upstream`。
 
 ### 0.1.4

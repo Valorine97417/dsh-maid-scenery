@@ -6,6 +6,11 @@
  *   ② 融合层（runtime/）—— 两家互斥显隐规则 + 面板里的「视频 / 静态画」切换行；
  *   ③ 主题层（vendor/maid-atelier）—— `/skin-assets/maid-atelier/*` 静态画素材路由。
  *
+ * 另有两条自加的端点（④），只服务面板上的「背景音乐」行：
+ *   - `/dsh-maid-scenery/music.json`：报出音乐目录与目录里的曲目数；
+ *   - `/dsh-maid-scenery/open-music-folder`：用系统文件管理器打开那个目录（只认 POST）。
+ * 音频本身由使用者自备（不进 git 索引，见 README「背景音乐（自备，不入库）」）。
+ *
  * 契约全部抄 dsh-video-skin 踩过的坑（见 vendor/video-skin/index.host.js 头注释）：
  *   - `inject` 空数组、apply 同步注册订阅：桌面壳的注入表在宿主启动时收集一次，
  *     晚订阅没有刷新路径。
@@ -22,6 +27,7 @@
  * `new URL('../assets/runtime/', import.meta.url)` 都是相对自身文件推导的，
  * 搬进 vendor/ 子目录后依然落在各自的包根上（2026-10-13 实测确认）。
  */
+import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -34,8 +40,67 @@ export const inject = []
 
 const RUNTIME_DIR = 'runtime'
 
+/** 音乐目录（相对包根）：与视频层扫描的那一个目录完全同一处。 */
+const MUSIC_DIR = path.join('vendor', 'video-skin', 'assets')
+
+/** 视频层认的音频扩展名（与 vendor/video-skin/lib/config.js 的白名单一致）。 */
+const AUDIO_EXTENSIONS = Object.freeze([
+  '.mp3',
+  '.ogg',
+  '.oga',
+  '.opus',
+  '.m4a',
+  '.aac',
+  '.flac',
+  '.wav',
+])
+
+/** 面板「背景音乐」行用的两个端点。 */
+const MUSIC_INFO_ROUTE = '/dsh-maid-scenery/music.json'
+const MUSIC_OPEN_ROUTE = '/dsh-maid-scenery/open-music-folder'
+
 function describe(error) {
   return error instanceof Error ? error.message : String(error)
+}
+
+/**
+ * 列出目录里的音频（按文件名排序，与视频层的歌单顺序一致）。
+ * @param {string} dir 绝对路径。
+ * @returns {string[]} 文件名列表；目录不在或读不动就是空数组。
+ */
+function listTracks(dir) {
+  try {
+    return fs
+      .readdirSync(dir, { withFileTypes: true })
+      .filter(
+        (entry) =>
+          entry.isFile() && AUDIO_EXTENSIONS.includes(path.extname(entry.name).toLowerCase()),
+      )
+      .map((entry) => entry.name)
+      .sort((a, b) => a.localeCompare(b))
+  } catch {
+    return []
+  }
+}
+
+/**
+ * 用系统文件管理器打开音乐目录。
+ *
+ * 目录不存在就先建出来——这个按钮的全部意义就是「让我把歌丢进去」，
+ * 空目录打不开等于把用户堵在第一步。
+ *
+ * @param {string} dir 绝对路径。
+ * @returns {string} 实际调用的命令名（写进响应方便排查）。
+ */
+function openFolder(dir) {
+  fs.mkdirSync(dir, { recursive: true })
+  const command =
+    process.platform === 'win32' ? 'explorer.exe' : process.platform === 'darwin' ? 'open' : 'xdg-open'
+  const child = spawn(command, [dir], { detached: true, stdio: 'ignore' })
+  // 打开失败只是"没打开"：进程是 detached 的，错误只能异步到达，不该抛回宿主。
+  child.on('error', () => {})
+  child.unref()
+  return command
 }
 
 /** 按 mtime+size 缓存的运行时读取器（改文件刷新即生效，直出形态无需重启）。 */
@@ -85,5 +150,72 @@ export function apply(ctx) {
     applyMaidAtelier(ctx)
   } catch (error) {
     warn(`主题层装配失败，静态画素材将 404（视频层不受影响）：${describe(error)}`)
+  }
+
+  // ── ④ 音乐面板端点：面板「背景音乐」行按它走动 ──
+  const musicDir = path.join(packageRoot, MUSIC_DIR)
+  try {
+    ctx.inject(['webServer'], (child) => {
+      child.effect(() => {
+        /** @type {Array<() => void>} */
+        const disposers = []
+
+        /** @param {import('node:http').ServerResponse} res @param {number} status @param {unknown} body */
+        const json = (res, status, body) => {
+          const text = JSON.stringify(body)
+          res.writeHead(status, {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Content-Length': Buffer.byteLength(text),
+            'Cache-Control': 'no-store',
+          })
+          res.end(text)
+        }
+
+        disposers.push(
+          child.webServer.register({
+            kind: 'exact',
+            path: MUSIC_INFO_ROUTE,
+            handler: (req, res) => {
+              try {
+                const tracks = listTracks(musicDir)
+                json(res, 200, { dir: musicDir, count: tracks.length, tracks })
+              } catch (error) {
+                json(res, 500, { dir: musicDir, error: describe(error) })
+              }
+            },
+          }),
+        )
+
+        disposers.push(
+          child.webServer.register({
+            kind: 'exact',
+            path: MUSIC_OPEN_ROUTE,
+            handler: (req, res) => {
+              // 只认 POST：GET 可能被浏览器预取或缓存，谁也不想页面一加载就弹出一个资源管理器。
+              const method = String(req.method ?? 'GET').toUpperCase()
+              if (method !== 'POST') {
+                json(res, 405, { error: 'use POST' })
+                return
+              }
+              try {
+                const command = openFolder(musicDir)
+                json(res, 200, { dir: musicDir, opened: true, command })
+              } catch (error) {
+                warn(`打开音乐目录失败：${describe(error)}`)
+                json(res, 500, { dir: musicDir, opened: false, error: describe(error) })
+              }
+            },
+          }),
+        )
+
+        return () => {
+          for (const dispose of disposers) {
+            try { dispose() } catch { /* 拆解失败不是失败理由 */ }
+          }
+        }
+      })
+    })
+  } catch (error) {
+    warn(`音乐面板端点装配失败，面板上的「打开音乐位置」会没反应：${describe(error)}`)
   }
 }

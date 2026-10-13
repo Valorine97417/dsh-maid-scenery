@@ -2,7 +2,9 @@
 // 从仓库根运行：node scripts/smoke.mjs
 // 隔离：不读真实用户配置（$DSH_HOME/dsh-video-skin.json），冒烟只验证装配与契约
 process.env.DSH_HOME = new URL('.smoke-home/', import.meta.url).pathname.replace(/^\//, '');
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 // 隔离：不读真实用户配置（$DSH_HOME/dsh-video-skin.json）。ESM import 会被提升，
 // 所以被测模块必须用动态 import —— 静态 import 会在本行之前就跑完。
@@ -100,11 +102,66 @@ const maFiles = [
 check('视频层文件齐', vsFiles.every((f) => size(f) > 0), vsFiles.filter((f) => size(f) <= 0).join(' '));
 check('主题层文件齐', maFiles.every((f) => size(f) > 0), maFiles.filter((f) => size(f) <= 0).join(' '));
 
-// flac 零残留（C418 商业版权音频，不可再分发）
-const flacs = [];
-const walk = (d) => { for (const e of readdirSync(root(d), { withFileTypes: true })) { const p = `${d}/${e.name}`; e.isDirectory() ? walk(p) : (/\.flac$/i.test(e.name) && flacs.push(p)); } };
-walk('vendor');
-check('vendor 内零 .flac（商业版权音频已排除）', flacs.length === 0, flacs.join(' '));
+// ── 音频素材（背景音乐）：本地私有，闸门是"不进 git 索引"，不是"磁盘上不许有" ──
+// 背景音乐由使用者自备（C418 等商业版权曲目），包内放一份、配置指向它完全正常；
+// 不可再分发的是"推上仓库"这个动作，所以这里守 .gitignore 规则 + git 索引零音频。
+const AUDIO_RE = /\.(flac|mp3|ogg|oga|opus|m4a|aac|wav)$/i;
+const gitignoreText = readFileSync(root('.gitignore'), 'utf8');
+check(
+  '.gitignore 覆盖包内音频扩展名（本地音乐不入库）',
+  ['flac', 'mp3', 'ogg', 'm4a', 'wav'].every((ext) => gitignoreText.includes(`vendor/video-skin/assets/*.${ext}`)),
+);
+let trackedAudio = null; // null = git 不可用，跳过（软降级）
+try {
+  const listed = execFileSync('git', ['ls-files', '--', 'vendor'], {
+    cwd: fileURLToPath(new URL('../', import.meta.url)),
+    encoding: 'utf8',
+  });
+  trackedAudio = listed.split(/\r?\n/).map((l) => l.trim()).filter((l) => AUDIO_RE.test(l));
+} catch { trackedAudio = null; }
+check(
+  'git 索引内零音频（禁再分发）',
+  trackedAudio === null || trackedAudio.length === 0,
+  trackedAudio === null ? 'git 不可用 → 跳过' : trackedAudio.join(' '),
+);
+
+// 本地有音频时，配置指向它必须解析成功：music 出路 + 播放列表非空 + 零 warning。
+// 这条正是"音乐被整合漏掉"的回归守卫——磁盘上放着歌却解析不出来，页面就是静音。
+const audioOnDisk = (() => {
+  try { return readdirSync(root('vendor/video-skin/assets')).filter((f) => AUDIO_RE.test(f)); } catch { return []; }
+})();
+if (audioOnDisk.length === 0) {
+  console.log('SKIP  本地无音频 → 音乐解析用例跳过（放一首进 vendor/video-skin/assets/ 即生效）');
+} else {
+  const { loadConfig } = await import('../vendor/video-skin/lib/config.js');
+  const { BOOT_ROUTE, BACKGROUND_ROUTE, MUSIC_ROUTE, TRACKS_ROUTE, CONFIG_ROUTE, OVERRIDE_ROUTE } =
+    await import('../vendor/video-skin/index.host.js');
+  const tmpHome = fileURLToPath(root('.smoke-home/music/'));
+  mkdirSync(tmpHome, { recursive: true });
+  writeFileSync(`${tmpHome}dsh-video-skin.json`, JSON.stringify({
+    background: {
+      music: `assets/${audioOnDisk[0]}`,
+      musicVolume: 0.25,
+      surface: 0.2, surfaceLight: 0.6, veil: 0.14, veilLight: 0.098,
+    },
+  }), 'utf8');
+  const cfg = loadConfig({
+    packageRoot: fileURLToPath(root('vendor/video-skin/')),
+    homeDir: tmpHome,
+    version: '0.2.0',
+    routes: {
+      boot: BOOT_ROUTE, background: BACKGROUND_ROUTE, music: MUSIC_ROUTE,
+      tracks: TRACKS_ROUTE, config: CONFIG_ROUTE, override: OVERRIDE_ROUTE,
+    },
+  });
+  const bg = cfg.client.background;
+  check('本地音乐：解析零 warning', cfg.warnings.length === 0, cfg.warnings.join(' / '));
+  check('本地音乐：music 路由已出路', bg.music === MUSIC_ROUTE, String(bg.music));
+  check('本地音乐：播放列表含该曲', bg.musicPlaylist.length === audioOnDisk.length && bg.musicPlaylist[0].endsWith(encodeURIComponent(audioOnDisk[0])), bg.musicPlaylist.join(' '));
+  check('本地音乐：音量取自用户覆盖文件', bg.musicVolume === 0.25, String(bg.musicVolume));
+  check('本地音乐：素材目录落在包内 assets', cfg.paths.music?.includes('assets') === true, String(cfg.paths.music));
+  rmSync(fileURLToPath(root('.smoke-home/music/')), { recursive: true, force: true });
+}
 
 // 主题素材：manifest 白名单与磁盘文件一一对应
 const manifest = JSON.parse(readFileSync(root('vendor/maid-atelier/assets/runtime/manifest.json'), 'utf8'));
@@ -119,15 +176,17 @@ check('磁盘素材无 manifest 之外的孤儿', onDisk.every((f) => files.incl
 check('视频层导出 apply', typeof applyVideoSkin === 'function');
 check('主题层导出 apply', typeof applyMaidAtelier === 'function');
 
-// 路由注册：视频层 6 条 + 主题素材 1 条 prefix
+// 路由注册：视频层 6 条 + 主题素材 1 条 prefix + 音乐面板 2 条（本包自加）
 const paths = registrations.map((r) => r.path);
 check('注册了视频层配置路由', paths.includes('/dsh-video-skin/config.json'));
 check('注册了视频层背景视频路由', paths.includes('/dsh-video-skin/background.mp4'));
 check('注册了视频层覆盖写路由', paths.includes('/dsh-video-skin/override'));
 check('注册了主题素材 prefix 路由', registrations.some((r) => r.kind === 'prefix' && r.path === '/skin-assets/maid-atelier'));
-check('路由注册总数 7', registrations.length === 7, `got ${registrations.length} ${paths.join(',')}`);
-// 每层的 effect 各返回一个总清理函数（视频层 6 条路由共用一个，主题层 1 条）
-check('两层各留一个 disposer（可卸载）', disposers.length === 2, `got ${disposers.length}`);
+check('注册了音乐信息路由', paths.includes('/dsh-maid-scenery/music.json'));
+check('注册了打开音乐目录路由', paths.includes('/dsh-maid-scenery/open-music-folder'));
+check('路由注册总数 9', registrations.length === 9, `got ${registrations.length} ${paths.join(',')}`);
+// 每层的 effect 各返回一个总清理函数（视频层 6 条路由共用一个，主题层 1 条，音乐面板 1 条）
+check('三层各留一个 disposer（可卸载）', disposers.length === 3, `got ${disposers.length}`);
 check('disposer 全是函数', disposers.every((d) => typeof d === 'function'));
 
 // 素材路由要真能取到文件 —— 只断言 manifest 与磁盘对得上不够：
@@ -153,6 +212,27 @@ const miss = await probe(`/skin-assets/maid-atelier/${'0'.repeat(64)}.png`);
 check('白名单外的素材名返回 404', miss.status === 404, JSON.stringify(miss));
 const badMethod = await probe(`/skin-assets/maid-atelier/${files[0]}`, 'POST');
 check('非 GET/HEAD 返回 405', badMethod.status === 405, JSON.stringify(badMethod));
+
+// ---- 音乐面板端点（本包自加）----
+// 只真跑只读那条：打开目录那条一旦真跑就会弹出资源管理器，冒烟不该有这个副作用，
+// 所以对它只验方法守卫（GET → 405），顺带把"只认 POST"这条契约钉死。
+const musicInfo = registrations.find((r) => r.path === '/dsh-maid-scenery/music.json');
+const musicOpen = registrations.find((r) => r.path === '/dsh-maid-scenery/open-music-folder');
+const callRoute = async (route, method = 'GET') => {
+  const res = fakeRes();
+  await route.handler({ method, url: route.path, headers: {} }, res);
+  let body = null;
+  try { body = JSON.parse(res._out.body); } catch { /* 非 JSON 就留 null */ }
+  return { status: res._out.status, body };
+};
+if (musicInfo && musicOpen) {
+  const info = await callRoute(musicInfo);
+  check('音乐信息端点返回曲目数与列表', info.status === 200 && typeof info.body?.count === 'number' && Array.isArray(info.body?.tracks), JSON.stringify(info));
+  check('音乐信息端点报的目录落在包内 vendor/assets', /vendor[\\/]video-skin[\\/]assets$/.test(info.body?.dir ?? ''), info.body?.dir);
+  check('曲目数与 tracks 长度一致', info.body?.count === info.body?.tracks?.length, JSON.stringify(info.body));
+  const openGet = await callRoute(musicOpen, 'GET');
+  check('打开音乐目录只认 POST（GET 返回 405）', openGet.status === 405, JSON.stringify(openGet));
+}
 
 // ---- 客户端半边 ----
 const client = readFileSync(url('../client.js'), 'utf8');

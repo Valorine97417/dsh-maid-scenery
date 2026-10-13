@@ -2,3 +2,15 @@ node_modules/
 *.log
 .DS_Store
 .smoke-home/
+
+# 本地私有背景音乐：上游视频皮肤 assets/ 只有 boot.mp4 与 background.mp4，
+# 音频由使用者自备（C418 等商业版权曲目不入库，避免再分发）。
+# 把音乐丢进 vendor/video-skin/assets/ 后写进 dsh-video-skin.json 的 background.music 即可。
+vendor/video-skin/assets/*.flac
+vendor/video-skin/assets/*.mp3
+vendor/video-skin/assets/*.ogg
+vendor/video-skin/assets/*.oga
+vendor/video-skin/assets/*.opus
+vendor/video-skin/assets/*.m4a
+vendor/video-skin/assets/*.aac
+vendor/video-skin/assets/*.wav
