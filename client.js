@@ -1,4 +1,5 @@
 // dsh-maid-scenery 客户端半边（v0.2.0 整合版）
+console.log('[scenery] client 半边已执行', new Date().toISOString());
 // 无构建步骤：本模块只做一件事——把随包的 maid-atelier 主题客户端物化进本 fiber。
 // 视频层前端**不走** dsh.client：它由宿主半边经 webserver/index-inject 注入
 // （vendor/video-skin/runtime/skin.js），与整合前完全一致。
