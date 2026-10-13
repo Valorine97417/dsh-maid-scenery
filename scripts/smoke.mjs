@@ -83,6 +83,8 @@ check('融合层 script 装了圆钮拖动', /dsvs-knobs-pill/.test(table[3]?.te
 check('拖动位置持久化（换页面还在原处）', /dsh-maid-scenery-knobs/.test(table[3]?.text ?? ''));
 check('拖动只吞掉自己尾巴那一次 click（不接管 vendor 的开合）', /stopImmediatePropagation/.test(table[3]?.text ?? ''));
 check('融合层 css 给可拖圆钮开了 touch-action:none', /#dsvs-knobs-pill\[data-scenery-drag="1"\][^{]*\{[^}]*touch-action:\s*none/.test(css));
+check('活动范围认的是对话框那一列（centerCol，全落空才退回视口）', /\[class\*='centerCol'\]/.test(table[3]?.text ?? ''));
+check('夹取用的是对话框范围（拖动内缩 4px / 吸附内缩 KNOBS_GAP）', /Math\.max\(area\.left \+ 4/.test(table[3]?.text ?? '') && /area\.right\s*-\s*width\s*-\s*KNOBS_GAP/.test(table[3]?.text ?? ''));
 
 // ---- 整合层：vendor 产物在位 ----
 const vsFiles = [

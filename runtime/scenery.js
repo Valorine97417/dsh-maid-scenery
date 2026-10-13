@@ -220,8 +220,11 @@
     // 只改圆钮与面板的定位样式，**不碰 vendor 的点击开合逻辑**：拖动结束时吞掉那一次
     // click，免得"拖完顺手把面板打开了"。
     const KNOBS_KEY = 'dsh-maid-scenery-knobs';
-    const KNOBS_GAP = 16;  // 吸附后与屏幕边缘的间距（对齐 vendor 原本的 16px）
+    const KNOBS_GAP = 16;  // 吸附后与对话框边缘的间距（对齐 vendor 原本的 16px）
     const KNOBS_SLOP = 4;  // 位移小于这个值算点击，不算拖
+    // 活动范围 = 对话框（DSH 布局里中间那一列，class 名带 centerCol；左边是侧边栏）。
+    // 选择器按可靠性排序，全落空就退回整个视口——选择器哪天变了也不至于拖不动。
+    const KNOBS_FRAME = ["[class*='centerCol']", "[data-slot='conversation.session']", 'main'];
 
     const readKnobs = () => {
       try {
@@ -254,9 +257,25 @@
       let startX = 0;
       let startY = 0;
       let startRect = null;
+      let dragArea = null;   // 开拖那一刻量到的对话框范围（拖动中不重算）
 
       const viewW = () => window.innerWidth || 0;
       const viewH = () => window.innerHeight || 0;
+
+      /** 量一次对话框区域；侧边栏展开/收起、窗口改尺寸都会让它变，所以每次都现量。 */
+      const frameRect = () => {
+        const fallback = { left: 0, top: 0, right: viewW(), bottom: viewH() };
+        try {
+          let el = null;
+          for (let i = 0; i < KNOBS_FRAME.length && !el; i += 1) {
+            el = document.querySelector(KNOBS_FRAME[i]);
+          }
+          if (!el) return fallback;
+          const rect = el.getBoundingClientRect();
+          if (!rect || !rect.width || !rect.height) return fallback;
+          return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+        } catch { return fallback; }
+      };
 
       /** 面板贴着圆钮放：默认在上方，上方塞不下就翻到下方。 */
       const placePanel = () => {
@@ -264,11 +283,12 @@
         try {
           const rect = pill.getBoundingClientRect();
           if (!rect.width) return;
-          const leftSide = rect.left + rect.width / 2 < viewW() / 2;
-          panel.style.left = leftSide ? Math.max(8, Math.round(rect.left)) + 'px' : 'auto';
-          panel.style.right = leftSide ? 'auto' : Math.max(8, Math.round(viewW() - rect.right)) + 'px';
+          const area = frameRect();
+          const leftSide = rect.left + rect.width / 2 < (area.left + area.right) / 2;
+          panel.style.left = leftSide ? Math.max(area.left + 8, Math.round(rect.left)) + 'px' : 'auto';
+          panel.style.right = leftSide ? 'auto' : Math.max(8, Math.round(viewW() - Math.min(area.right - 8, rect.right))) + 'px';
           const height = panel.offsetHeight || 0;   // 收起时是 0，先按"上方放得下"处理
-          if (height === 0 || rect.top - 10 - height >= 8) {
+          if (height === 0 || rect.top - 10 - height >= area.top + 8) {
             panel.style.top = 'auto';
             panel.style.bottom = Math.round(viewH() - rect.top + 10) + 'px';
           } else {
@@ -278,16 +298,22 @@
         } catch { /* 定位失败就退回 CSS 里的默认角落 */ }
       };
 
-      /** 把记忆里的位置落到样式上（并夹进视口）。 */
+      /** 把记忆里的位置落到样式上（并夹进对话框范围）。 */
       const apply = () => {
         try {
+          const area = frameRect();
           const height = pill.offsetHeight || 32;
-          const y = Math.max(8, Math.min(pos.y, Math.max(8, viewH() - height - 8)));
+          const width = pill.offsetWidth || 32;
+          // y 是"圆钮底边到视口底边的距离"：贴对话框底边时最小，贴顶边时最大。
+          const yMin = viewH() - area.bottom + KNOBS_GAP;
+          const yMax = viewH() - area.top - height - KNOBS_GAP;
+          const y = Math.max(yMin, Math.min(pos.y, Math.max(yMin, yMax)));
           pos = { side: pos.side, y: Math.round(y) };
+          const left = pos.side === 'left' ? area.left + KNOBS_GAP : area.right - width - KNOBS_GAP;
           pill.style.top = 'auto';
           pill.style.bottom = pos.y + 'px';
-          pill.style.left = pos.side === 'left' ? KNOBS_GAP + 'px' : 'auto';
-          pill.style.right = pos.side === 'right' ? KNOBS_GAP + 'px' : 'auto';
+          pill.style.left = Math.round(left) + 'px';
+          pill.style.right = 'auto';
           placePanel();
         } catch { /* ignore */ }
       };
@@ -300,6 +326,7 @@
           startX = event.clientX;
           startY = event.clientY;
           startRect = pill.getBoundingClientRect();
+          dragArea = frameRect();   // 开拖那一刻的对话框范围：拖动中不重算，免得手感一跳一跳
           pill.style.transition = 'none';   // 拖动期间别跟 CSS 的 220ms 过渡打架
           if (typeof pill.setPointerCapture === 'function') {
             try { pill.setPointerCapture(event.pointerId); } catch { /* 拿不到捕获也能拖 */ }
@@ -322,8 +349,9 @@
             }
           }
           if (event.cancelable) event.preventDefault();
-          const left = Math.max(8, Math.min(startRect.left + dx, viewW() - startRect.width - 8));
-          const top = Math.max(8, Math.min(startRect.top + dy, viewH() - startRect.height - 8));
+          const area = dragArea || frameRect();
+          const left = Math.max(area.left + 4, Math.min(startRect.left + dx, area.right - startRect.width - 4));
+          const top = Math.max(area.top + 4, Math.min(startRect.top + dy, area.bottom - startRect.height - 4));
           pill.style.left = Math.round(left) + 'px';
           pill.style.top = Math.round(top) + 'px';
           pill.style.right = 'auto';
@@ -343,8 +371,9 @@
         if (!moved) return;   // 一路没动：这次点击归 vendor 的开合逻辑
         try {
           const rect = pill.getBoundingClientRect();
+          const area = dragArea || frameRect();
           pos = {
-            side: rect.left + rect.width / 2 < viewW() / 2 ? 'left' : 'right',
+            side: rect.left + rect.width / 2 < (area.left + area.right) / 2 ? 'left' : 'right',
             y: viewH() - rect.bottom,
           };
           writeKnobs(pos);
