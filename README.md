@@ -12,10 +12,14 @@
 ## 安装
 
 ```bash
-dsh plugin --profile desktop add github:Valorine97417/dsh-maid-scenery
+# 主题与视频皮肤都是直接依赖，一条命令全装上（profile 名按实际替换）
+dsh plugin --profile desktop add \
+  "github:Valorine97417/dsh-maid-scenery" \
+  "github:flaricy/maid-atelier-ui-bundle#path:/plugins/maid-atelier" \
+  "github:Something11235/dsh-video-skin"
 ```
 
-装完重启 DSH。主题（`@dsh-external/dsh-client-ui-skin-maid-atelier`）是本包依赖，会一起装上，其 entry 行由本包的 `cordis.patch.yml` 插入——**不需要再单独装 maid-atelier**。dsh-video-skin 请老大自行安装；它缺席时本插件全部规则自动失效（条件化选择器），不误伤。
+装完重启 DSH。为什么主题不做成本包依赖：pnpm 的 `blockExoticSubdeps` 供应链策略禁止 git 协议依赖藏在子依赖里（本包 v0.1.0 就撞过），所以主题降为 optional peer——**三条链全部条件化**，两家插件谁缺席本包规则都自动失效，不误伤。
 
 ## 设计约束（都来自视频皮肤踩过的坑）
 

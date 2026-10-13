@@ -1,9 +1,7 @@
 # dsh-maid-scenery bundle patch
-# 融合层：插本插件自身行 + maid-atelier 主题行（主题是本包依赖，行由这里解析）。
-# dsh-video-skin 不在此列——它缺席时本插件全部规则自动失效（:has 条件化），
-# 在场时由老大 profile 自行管理，避免重复 insert。
+# 融合层：只插本插件自身行。
+# maid-atelier 主题与 dsh-video-skin 都由 profile 直接安装（各自的 bundle patch 插自己的行）；
+# 本包的规则全部条件化——两家谁缺席都自动失效，不误伤。
 - insert:
     - id: maid-scenery
       name: 'dsh-maid-scenery'
-    - id: ui-skin-maid-atelier
-      name: '@dsh-external/dsh-client-ui-skin-maid-atelier'
