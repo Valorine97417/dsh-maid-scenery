@@ -1,0 +1,40 @@
+{
+  "name": "dsh-maid-scenery",
+  "description": "视频背景×深海女仆工坊的融合层：静态场景画沉到视频层后面，聊天背景面板加「视频/静态画」切换。依赖 maid-atelier 主题与 dsh-video-skin，装一个包两者合体。",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "index.js",
+  "license": "MIT",
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "skin",
+    "maid-atelier",
+    "video-skin",
+    "backdrop"
+  ],
+  "files": [
+    "index.js",
+    "runtime",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@dsh-external/dsh-client-ui-skin-maid-atelier": "github:flaricy/maid-atelier-ui-bundle#path:/plugins/maid-atelier"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

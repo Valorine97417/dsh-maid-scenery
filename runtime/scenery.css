@@ -1,0 +1,39 @@
+/*
+ * dsh-maid-scenery — 融合样式（注入 <head>）。
+ *
+ * 三层堆叠（自下而上）：
+ *   ① body 上的 maid-atelier 场景画（主题的 [id=root]{background:0 0} 已让 root 透明露出它）
+ *   ② dsh-video-skin 的视频层 #dsvs-backdrop（z-index:-1）
+ *   ③ 主题立绘 [data-skin-chrome=character-stage]（z-index:0）与应用内容
+ *
+ * 本文件干两件事：
+ *   A. 把 ② 的不透明兜底色（#0e1116 / #eef1f5）改透明——静态画因此沉到视频层
+ *      后面：视频播放时盖住画，视频未就绪/淡出时透出画，两全。
+ *   B. body[data-maid-scenery="art"]（面板切到「静态画」时由 scenery.js 挂上）
+ *      把视频层与它的 veil 整体淡出，只留静态画。
+ *
+ * 所有规则都以 #dsvs-backdrop 为锚——该元素只有 dsh-video-skin 在场才存在；
+ * B 组的 data 属性只有本插件运行时脚本在场才会出现。主题缺席时 body 没有画，
+ * 透明化也无副作用（露出的是应用自身底色）。三条链各自成立，互不牵连。
+ */
+
+/* ── A. 静态画沉到视频层后面 ── */
+#dsvs-backdrop {
+  background: transparent !important;
+}
+
+/* ── B. 「静态画」模式：视频层整体淡出 ── */
+/* 用 opacity 不用 display:none：视频继续解码，切回「视频」时不闪、不重载。 */
+body[data-maid-scenery="art"] #dsvs-backdrop,
+body[data-maid-scenery="art"] #dsvs-backdrop-veil {
+  opacity: 0 !important;
+  transition: opacity 600ms ease;
+}
+
+/* 面板按钮行（scenery.js 注入，复用视频皮肤面板的 row/label/pill 类，视觉无缝）。 */
+.dsvs-knobs-row[data-scenery-switch] .dsvs-knobs-pill {
+  cursor: pointer;
+}
+.dsvs-knobs-row[data-scenery-switch] .dsvs-knobs-pill[aria-pressed="true"] {
+  outline: 1px solid currentColor;
+}
