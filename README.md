@@ -29,12 +29,17 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
 | 目录 | 是什么 | 上游 |
 | --- | --- | --- |
 | `index.js` / `client.js` / `runtime/` | 融合层本体（本仓库自有代码，MIT） | — |
+| `skin.json` | 皮肤清单：让「皮肤管理」面板认得出本包内置的主题 | — |
 | `vendor/video-skin/` | 视频层：开机动画、聊天背景视频、「聊天背景」面板与路由 | dsh-video-skin v0.1.1（MIT） |
 | `vendor/maid-atelier/` | 主题层：静态工坊画、蕾丝、Q 版侧栏、31 个哈希素材 | maid-atelier v0.1.7（代码 MIT / 美术 CC BY-NC-SA 4.0） |
 
 **两家上游以零修改形态内置**（仅去除源映射注释），由本包在运行时装配：宿主半边在 `index.js` 里依次调用两家的 `apply`，客户端半边在 `client.js` 里物化 maid-atelier 的浏览器模块。视频层的前端不走 `dsh.client`——照旧由宿主半边经 `webserver/index-inject` 注入。
 
 **装过旧版配套的要先卸掉**：如果 profile 里还装着 `@smalltailqwq/dsh-client-ui-skin-maid-atelier` 或 `dsh-video-skin`，请先 `dsh plugin --profile desktop remove` 掉——两套同样的东西同时在场会重复注入、互相打架（`skin.json` 的 `id` 与 `wiring.id` 两版相同）。
+
+**皮肤管理器怎么还认得出**：皮肤管理器（`@smalltailqwq/dsh-client-ui-skin-deep-whale-manager`）只从 profile 的依赖里找带 `skin.json` 的包，且要求清单里的 `package` 字段等于已装包名。整合后 maid-atelier 不再是独立依赖，所以本包**在包根自曝一份 `skin.json`**：`id` 仍写 `maid-atelier`（换源时「先卸旧主题」的规则不变），`package` 改成本包名，`wiring.id` 对齐本包自己的 patch entry `maid-scenery`，`preview` 与 `desktopIcon` 指到 `vendor/maid-atelier/` 下。于是面板里照旧显示「深海女仆工坊」与它的定制控件。
+
+> 已知边界：皮肤管理器的「切换」开关管的是 `maid-scenery` 这一条 entry 的 `disabled`。由于主题本来就是本包的一部分（随 `client.js` 常驻物化），把它关掉只会停掉融合层的切换行，不会卸掉主题本身——真正的「换成别的皮肤」要等上游支持包内皮肤再补。当前本机只有这一套皮肤，不影响使用。
 
 **为什么要整合**：pnpm 的 `blockExoticSubdeps` 供应链策略禁止 git 协议依赖藏在子依赖里（本包 v0.1.0 就撞过），上游主题只能降为 optional peer——那样「装一个包」就永远做不到，三家谁缺席都要用户自己排查。整合后依赖关系只剩一条，规则也不再需要条件化。
 
@@ -51,6 +56,7 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
 ### 0.2.0
 
 - **整合两家配套随包分发**：`vendor/video-skin/` 与 `vendor/maid-atelier/` 零修改内置，装一个包全齐，卸载配套插件也不影响。宿主半边由 `index.js` 装配，客户端半边由 `client.js` 物化。上游主题的 optional peer 依赖随之删除。
+- **包根自曝 `skin.json`**：整合后 maid-atelier 不再是独立依赖，皮肤管理器便发现不到它。现在本包自己声明皮肤清单（`package` 指向本包、`wiring.id` 对齐 `maid-scenery`），「皮肤管理」面板重新显示「深海女仆工坊」。
 - **移除商业版权音频**：视频皮肤上游 `assets/` 只有 `boot.mp4` 与 `background.mp4`；本机曾额外放入 4 个 C418 的 `.flac`，未随包分发。
 - **双许可结构**：本包代码 MIT；`vendor/maid-atelier/` 的美术素材仍为上游声明的 CC BY-NC-SA 4.0，署名链完整保留在 `NOTICE`，许可正文在 `LICENSE-ARTWORK`，上游原始声明在 `vendor/maid-atelier/LICENSE-upstream`。
 

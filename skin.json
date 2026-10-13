@@ -1,0 +1,31 @@
+{
+  "id": "maid-atelier",
+  "name": "深海女仆工坊",
+  "nameEn": "Abyssal Maid Atelier",
+  "author": "Small-tailqwq",
+  "tagline": "鲸鱼娘女仆、深海蓝蕾丝与 Q 版侧栏",
+  "taglineEn": "Whale maids, navy lace and a chibi sidebar",
+  "description": "两位鲸鱼娘女仆、深海蓝蕾丝与 Q 版侧栏，把 DSH 布置成女仆工坊。",
+  "tags": [
+    "anime",
+    "maid",
+    "whale",
+    "navy",
+    "ornate",
+    "glass"
+  ],
+  "accent": "#c5a468",
+  "bodyAttr": "data-dsh-maid-atelier",
+  "dshCompatibility": "0.2.0rc2",
+  "package": "dsh-maid-scenery",
+  "wiring": {
+    "id": "maid-scenery",
+    "bundleWired": false
+  },
+  "preview": {
+    "light": "vendor/maid-atelier/preview/light.webp",
+    "dark": "vendor/maid-atelier/preview/dark.webp"
+  },
+  "desktopIcon": "vendor/maid-atelier/assets/icons/delighted.ico",
+  "order": 5
+}

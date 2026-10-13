@@ -144,11 +144,26 @@ check('根 NOTICE 含三创署名链', /上善[\s\S]*ZipZipPipe[\s\S]*Small-tail
 check('根 LICENSE-ARTWORK 是 CC 正文', /Attribution-NonCommercial-ShareAlike 4\.0/.test(readFileSync(url('../LICENSE-ARTWORK'), 'utf8')));
 check('根 LICENSE-upstream 保留上游混合声明', /Bundling artwork into source code/.test(readFileSync(url('../LICENSE-upstream'), 'utf8')));
 
-// ---- 包元信息 ----
+// ---- 皮肤清单（skin.json）：让皮肤管理器认得出本包 ----
+// 上游 maid-atelier 是独立包，整合后 profile 里只剩 dsh-maid-scenery，
+// 皮肤管理器的发现链要求 manifest.package === 已装包名，故包根必须自曝一份。
 const pkg = JSON.parse(readFileSync(url('../package.json'), 'utf8'));
+const skin = JSON.parse(readFileSync(url('../skin.json'), 'utf8'));
+check('skin.json 存在且 id 保持 maid-atelier（换源要卸旧主题的兼容点）', skin.id === 'maid-atelier', skin.id);
+check('skin.json.package 指向本包（皮肤管理器发现链硬要求）', skin.package === pkg.name, `${skin.package} vs ${pkg.name}`);
+check('skin.json.wiring.id 与本包 patch entry id 一致', skin.wiring?.id === 'maid-scenery', skin.wiring?.id);
+check('skin.json.bodyAttr 保持 data-dsh-maid-atelier（客户端按它挂牌）', skin.bodyAttr === 'data-dsh-maid-atelier', skin.bodyAttr);
+check('skin.json.dshCompatibility 是 x.y.zrcN 形态', /^\d+\.\d+\.\d+rc\d+$/.test(skin.dshCompatibility ?? ''), skin.dshCompatibility);
+check('skin.json.preview 两图都在包里', size(skin.preview?.light) > 0 && size(skin.preview?.dark) > 0);
+check('skin.json.desktopIcon 在包里且是 .ico', size(skin.desktopIcon) > 0 && /\.ico$/i.test(skin.desktopIcon ?? ''));
+check('skin.json 里没有绝对路径（皮肤管理器会拒）', ![skin.preview?.light, skin.preview?.dark, skin.desktopIcon].some((p) => /^[a-zA-Z]:|^\//.test(p ?? '')));
+
+// ---- 包元信息 ----
 check('版本 0.2.0', pkg.version === '0.2.0', pkg.version);
 check('files 含 vendor 与 client.js', pkg.files.includes('vendor') && pkg.files.includes('client.js'));
+check('files 含 skin.json', pkg.files.includes('skin.json'));
 check('exports 暴露 ./client', pkg.exports['./client'] === './client.js');
+check('exports 暴露 ./skin.json（皮肤管理器三级解析第一级）', pkg.exports['./skin.json'] === './skin.json');
 check('dsh.client 声明 web 平台', pkg.dsh?.client?.platform === 'web');
 check('已无 maid-atelier peer 依赖（整合后不再需要）', !Object.keys(pkg.peerDependencies ?? {}).some((k) => k.includes('maid-atelier')));
 
