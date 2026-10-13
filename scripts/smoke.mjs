@@ -39,10 +39,11 @@ check('坏 table 静默跳过', !threw);
 // 运行时文件与注入内容一致
 const css = readFileSync(new URL('../runtime/scenery.css', import.meta.url), 'utf8');
 check('css 文件与注入一致', table[0]?.text === css);
-check('css 隐去可信模式徽章', /#vcp-trusted-toggle\s*\{[^}]*display:\s*none/.test(css));
-check('script 默认打开可信模式', /raw-html\.trusted/.test(table[1]?.text ?? ''));
+check('css 不再代管可信徽章（raw-html v7.3 起自己管）', !/#vcp-trusted-toggle\s*\{[^}]*display:\s*none/.test(css));
+check('script 不替 raw-html 写可信开关（用户的选择说了算）', !/setItem\(\s*['"]raw-html\.trusted/.test(table[1]?.text ?? ''));
 check('script 按 id 找面板（不带 class）', /#dsvs-knobs/.test(table[1]?.text ?? ''));
 check('script 用面板自带 preset 类', /dsvs-knobs-preset/.test(table[1]?.text ?? ''));
+check('script 两个模式都显式挂牌（CSS 的 video 规则靠它）', /setAttribute\('data-maid-scenery',\s*mode\)/.test(table[1]?.text ?? ''));
 
 console.log(`\n${pass} PASS / ${fail} FAIL`);
 process.exit(fail ? 1 : 0);
