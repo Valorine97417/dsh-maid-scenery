@@ -1,30 +1,37 @@
 /*
  * dsh-maid-scenery — 融合样式（注入 <head>）。
  *
- * 三层堆叠（自下而上）：
- *   ① body 上的 maid-atelier 场景画（主题的 [id=root]{background:0 0} 已让 root 透明露出它）
- *   ② dsh-video-skin 的视频层 #dsvs-backdrop（z-index:-1）
- *   ③ 主题立绘 [data-skin-chrome=character-stage]（z-index:0）与应用内容
+ * 两家插件都在场时的堆叠（自下而上）：
+ *   ① html 底色（dsh-video-skin 设的 #0e1116 / #eef1f5）
+ *   ② 视频层 #dsvs-backdrop —— position:fixed; inset:0; z-index:-1
+ *   ③ 主题的 [data-skin-chrome=character-stage] —— z-index:0，位于对话列内。
+ *      它的**背景**就是静态工坊画（--maid-palace-art），两个女仆立绘是它的子元素。
+ *   ④ 应用内容（聊天记录、输入框……）
  *
- * 本文件干三件事：
- *   A. 把 ② 的不透明兜底色（#0e1116 / #eef1f5）改透明——静态画因此沉到视频层
- *      后面：视频播放时盖住画，视频未就绪/淡出时透出画，两全。
- *   B. body[data-maid-scenery="art"]（面板切到「静态画」时由 scenery.js 挂上）
- *      把视频层与它的 veil 整体淡出，只留静态画。
- *   C. 杂事：隐去 raw-html 的可信模式徽章（它与视频皮肤面板的圆钮同位重叠）。
- *      可信模式本身由 scenery.js 写 localStorage 默认打开，渲染层每次现读，
- *      与该 DOM 无关——隐掉不损失功能。
+ * 关键事实：③ 的 z-index(0) 高于 ② 的 z-index(-1)，静态画**天生压在视频上面**。
+ * 所以"把静态画沉到视频层后面"这条路走不通 —— 除非把 ③ 整个降下去，可立绘是它的
+ * 子元素，同生共死，降下去会被全屏视频层连人带画一起盖住。
+ * 改用**互斥显隐**：两个模式各亮一层，切谁谁上场。
  *
- * 所有规则都以 #dsvs-backdrop 为锚——该元素只有 dsh-video-skin 在场才存在；
- * B 组的 data 属性只有本插件运行时脚本在场才会出现。主题缺席时 body 没有画，
- * 透明化也无副作用（露出的是应用自身底色）。三条链各自成立，互不牵连。
+ * 本文件干五件事：
+ *   A. 视频层的不透明兜底色改透明 —— 视频未就绪/淡出时不再露一块死色；
+ *   B. 「静态画」模式：视频层整体淡出，只剩静态画与立绘；
+ *   B2.「视频」模式：静态画的**背景**让位（只清背景，立绘原地不动），视频透出来；
+ *   C. 杂事：隐去 raw-html 的可信模式徽章（它与视频皮肤面板的圆钮同位重叠）；
+ *   D. 面板「背景画面」行的键盘可达性与选中态；
+ *   E. 亮色过亮：把视频皮肤刷的纯白表面换回工坊的冷调瓷白。
+ *
+ * 所有规则都以两家的产物为锚：`#dsvs-backdrop` 只有视频皮肤在场才存在，
+ * `[data-skin-chrome=character-stage]` 只有 maid-atelier 在场才存在，
+ * `body[data-maid-scenery]` 只有本插件运行时脚本在场才会出现。
+ * 三条链各自成立，谁缺席谁那段空转，互不牵连。
  *
  * 明暗不在这里切换：maid-atelier 与 dsh-video-skin 两家都只跟随宿主的
  * body[data-ds-dark-theme]，亮/暗由 DSH 自己的「设置 → 通用 → 外观」决定，
  * 皮肤只负责各自主题下的配色。本文件因此只补两家都没顾上的可读性缺口。
  */
 
-/* ── A. 静态画沉到视频层后面 ── */
+/* ── A. 视频层的兜底色透明 ── */
 #dsvs-backdrop {
   background: transparent !important;
 }
@@ -35,6 +42,19 @@ body[data-maid-scenery="art"] #dsvs-backdrop,
 body[data-maid-scenery="art"] #dsvs-backdrop-veil {
   opacity: 0 !important;
   transition: opacity 600ms ease;
+}
+
+/* ── B2. 「视频」模式：静态画的背景让位 ──
+ *
+ * 只清 background，不碰立绘：stage 的背景是宫殿画，两个女仆 <img> 是它的子元素，
+ * 清掉背景后 stage 成了个透明容器，视频（z-index:-1）从它背后透出来，立绘照旧
+ * 站在 0 层。这是"视频被静态画盖住"的正解。
+ *
+ * 刻意要求 body[data-maid-scenery="video"] 显式在场（而不是写成 :not([...="art"])）：
+ * 万一本插件脚本没跑起来，body 上不会有这个属性，主题便维持原样叠加 —— 降级回
+ * "静态画盖视频"的旧状态，而不是把用户挑的工坊画凭空抹掉。 */
+body[data-maid-scenery="video"] [data-skin-chrome="character-stage"] {
+  background: none !important;
 }
 
 /* ── C. 可信模式徽章：隐去（功能不受影响，见文件头） ── */
@@ -51,4 +71,38 @@ body[data-maid-scenery="art"] #dsvs-backdrop-veil {
 .dsvs-knobs-row[data-scenery-switch] .dsvs-knobs-preset:focus-visible {
   outline: 1px solid currentColor;
   outline-offset: 1px;
+}
+
+/* ── E. 亮色过亮：把纯白表面换回工坊的冷调瓷玻璃 ──
+ *
+ * 冲突现场：dsh-video-skin 的 `html[data-dsvs="on"] body`（特异性 0,1,2，带
+ * !important）把亮色下所有表面刷成 **纯白** rgba(255,255,255,…)，实度还偏低
+ * （surface 0.45 / layer1 0.55）。它压过了 maid-atelier 自己那套冷调瓷玻璃
+ * （#f8faffb8 / #ebf0fad6，实度 0.72–0.88），于是：亮壁纸透出大半 + 纯白叠加
+ * ⇒ 界面惨白刺眼。老大报的"亮色界面过亮"就是这一笔。
+ * （暗色下那边刷的是深灰 rgba(21,21,23,…)，不刺眼 —— 所以老大说"暗色正常很多"。）
+ *
+ * 解法：亮色下由本插件接管这四层表面与侧栏的**基色与实度**，改回冷调瓷白并压
+ * 暗一档。色值取工坊真值的色温（--maid-navy 系冷调，与 #121F41 卡片同源），
+ * 实度提到 0.88–0.90、基色亮度比纯白低 20–35 点。实测（纯白壁纸最坏情况 +
+ * 墨色 #172347）：平均表面亮度 92% → 73%，对比度 15.4:1 → 10.9:1，全部
+ * 远高于 4.5:1。亮色仍是亮色，只是不再白茫茫。
+ *
+ * 为什么写死实度、不读 `--dsvs-l-*`：那两个变量是视频皮肤按"底色纯白"的假设
+ * 定的（0.45/0.55），叠在亮壁纸上正是过亮的一半成因；读它等于把问题带回来。
+ * 亮色下由本插件接管是**刻意**的 —— 视频皮肤的旋钮在暗色下照旧完全有效。
+ * 暗色一个字不动。 */
+html[data-dsvs="on"] body:not([data-ds-dark-theme]) {
+  --dsw-alias-bg-base: rgba(201, 213, 239, 0.88) !important;
+  --dsw-alias-bg-layer-1: rgba(209, 219, 243, 0.88) !important;
+  --dsw-alias-bg-layer-2: rgba(217, 226, 246, 0.9) !important;
+  --dsw-alias-bg-layer-3: rgba(225, 232, 249, 0.9) !important;
+  --dsw-specific-sidebar-fill: rgba(205, 216, 241, 0.88) !important;
+}
+
+/* 白纱（#dsvs-backdrop-veil）是亮色下另一半成因：它铺在视频/壁纸上提亮，
+   0.22 的纯白纱等于给整幅画面再加两成白。换成冷调灰白并降到 0.10 ——
+   压得住文字，但不再额外提亮。同样写死（理由见上）。 */
+html[data-dsvs="on"] body:not([data-ds-dark-theme]) #dsvs-backdrop-veil {
+  background: rgba(226, 233, 246, 0.1) !important;
 }

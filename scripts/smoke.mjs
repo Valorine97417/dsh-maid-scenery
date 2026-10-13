@@ -26,6 +26,7 @@ check('style 在 script 前（顺序硬约束）', table[0]?.kind === 'style' &&
 check('script placement=body', table[1]?.placement === 'body');
 check('style 含 backdrop 透明化', /#dsvs-backdrop\s*\{[^}]*transparent/.test(table[0]?.text ?? ''));
 check('style 含 art 模式淡出', /data-maid-scenery="art"/.test(table[0]?.text ?? ''));
+check('style 含 video 模式让位静态画背景', /data-maid-scenery="video"\][^{]*character-stage/.test(table[0]?.text ?? ''));
 check('script 含面板注入', /dsvs-knobs/.test(table[1]?.text ?? ''));
 check('script 含持久化', /localStorage/.test(table[1]?.text ?? ''));
 check('script 整体包 try（失败静默）', /^\s*\/\*[\s\S]*?\*\/\s*\(\(\) => \{\s*'use strict';\s*try \{/.test(table[1]?.text ?? '') || table[1]?.text?.includes("'use strict'"));

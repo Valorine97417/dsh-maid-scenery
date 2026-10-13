@@ -5,8 +5,7 @@
  *   ① 在视频皮肤「聊天背景」面板（#dsvs-knobs）里加一行「背景画面」切换
  *      （视频 / 静态画），选择持久化到 localStorage，失败退会话内存；
  *   ② 把当前模式写成 body[data-maid-scenery]，CSS 据此淡出视频层；
- *   ③ 杂事：raw-html 可信模式默认打开（徽章由 scenery.css 隐去——它与视频
- *      皮肤面板的圆钮同位重叠）。
+ *   ③ 杂事：隐去 raw-html 的可信模式徽章（见 scenery.css C 段）。
  *
  * 生存法则（抄视频皮肤的头注释契约）：
  *   - 本文件任何一行都不许在求值期抛异常：所有入口包 try/catch，出错就安静待命，
@@ -19,7 +18,6 @@
   'use strict';
   try {
     const KEY = 'dsh-maid-scenery-mode';
-    const TRUST_KEY = 'raw-html.trusted';
     const read = () => {
       try { return localStorage.getItem(KEY); } catch { return window.__maidSceneryMode ?? null; }
     };
@@ -28,18 +26,21 @@
     };
     let mode = read() === 'art' ? 'art' : 'video';
 
-    // ── 杂事：可信模式默认打开 ──
-    // 渲染层每次都现读 localStorage（isTrusted()），所以这一笔立刻生效；
-    // 徽章本身的隐藏交给 scenery.css 的 display:none !important。
-    try {
-      if (localStorage.getItem(TRUST_KEY) !== '1') localStorage.setItem(TRUST_KEY, '1');
-    } catch { /* 私密模式/配额失败：维持宿主默认，不添乱 */ }
+    // ── 关于 raw-html 可信模式：这里**刻意什么都不写** ──
+    // v7.3 起可信模式的默认值已经是「开」（渲染层读不到显式关闭就返回 true），
+    // 所以不需要再替它写 localStorage。反过来，早先那行
+    // `if (getItem('raw-html.trusted') !== '1') setItem(..., '1')` 有个真 bug：
+    // 老大用 `localStorage.setItem('raw-html.trusted','0')` 显式关掉可信模式后，
+    // 本脚本每次加载都会把它翻回 '1' —— 关不掉。删掉它，让用户的选择说了算。
+    // 徽章本身的隐藏交给 scenery.css 的 display:none !important（那才是本插件的活）。
 
     const applyMode = () => {
       try {
         if (!document.body) return false;
-        if (mode === 'art') document.body.setAttribute('data-maid-scenery', 'art');
-        else document.body.removeAttribute('data-maid-scenery');
+        // 两个模式都显式挂牌（而不是「art 才挂牌、video 就摘牌」）：
+        // CSS 里「视频模式让静态画背景退场」那条规则要靠 video 这个值才敢下手。
+        // 脚本没跑起来时 body 上没有这个属性，主题便维持原样叠加 —— 降级安全。
+        document.body.setAttribute('data-maid-scenery', mode);
         return true;
       } catch { return false; }
     };
