@@ -86,6 +86,18 @@ check('融合层 css 给可拖圆钮开了 touch-action:none', /#dsvs-knobs-pill
 check('活动范围认的是对话框那一列（centerCol，全落空才退回视口）', /\[class\*='centerCol'\]/.test(table[3]?.text ?? ''));
 check('夹取用的是对话框范围（拖动内缩 4px / 吸附内缩 KNOBS_GAP）', /Math\.max\(area\.left \+ 4/.test(table[3]?.text ?? '') && /area\.right\s*-\s*width\s*-\s*KNOBS_GAP/.test(table[3]?.text ?? ''));
 
+// 窗口顶栏与右侧栏（老大 m00743：这两条边两家的美化都没顾上）
+check('顶栏那条取主题自己的面板蓝（哈希名 + 泛匹配双选择器兜底）', /\[class\*='BynINW_frame'\]::before[\s\S]{0,80}\[class\*='frame'\]::before/.test(css) && /var\(--dsw-alias-bg-layer-2/.test(css));
+check('顶栏有亮色分支（不把亮壁纸压黑）', /body:not\(\[data-ds-dark-theme\]\)\s*\[class\*='frame'\]::before/.test(css));
+check('右栏锚点用 DSH 真实属性 data-rightbar-col', /\[data-rightbar-col\]\s*\{/.test(css));
+check('右栏改成与左栏同族的实心表面（不是"让视频透上来"）', /--dsw-alias-bg-overlay:\s*rgba\(13, 25, 59, 0?\.97\)/.test(css) && /\[data-rightbar-col\]\s*\{[\s\S]{0,220}radial-gradient/.test(css));
+check('顶栏与右栏各缝一条金线（金只做线）', /0 1px 0 rgba\(197, 164, 104, 0\.\d+\)/.test(css) && /inset 1px 0 0 rgba\(197, 164, 104, 0\.\d+\)/.test(css));
+
+// 深色锁定（老大 m01089：只用深色，外观三个按钮不再改它）
+check('runtime 把 body[data-ds-dark-theme] 钉住（缺了就补回）', /DARK_ATTR\s*=\s*'data-ds-dark-theme'/.test(table[3]?.text ?? '') && /attributeFilter:\s*\[DARK_ATTR\]/.test(table[3]?.text ?? ''));
+check('深色锁定在 tryMount 之前执行（别被 return 漏掉）', /setupDarkLock\(\)[\s\S]{0,200}if \(tryMount\(\)\) return/.test(table[3]?.text ?? ''));
+check('css 把 color-scheme 交给深色', /color-scheme:\s*dark/.test(css));
+
 // ---- 整合层：vendor 产物在位 ----
 const vsFiles = [
   'vendor/video-skin/index.host.js',

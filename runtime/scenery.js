@@ -262,14 +262,37 @@
       const viewW = () => window.innerWidth || 0;
       const viewH = () => window.innerHeight || 0;
 
+      /** 找到对话框那一列的元素；找不到返回 null（与 frameRect 的视口兜底分开）。 */
+      const frameEl = () => {
+        try {
+          for (let i = 0; i < KNOBS_FRAME.length; i += 1) {
+            const el = document.querySelector(KNOBS_FRAME[i]);
+            if (el) return el;
+          }
+        } catch { /* ignore */ }
+        return null;
+      };
+
+      /**
+       * 对话框那一列是不是真的量出来了。
+       * 刷新瞬间它会短暂地零尺寸（甚至还没挂上），此刻若照旧走「视口兜底」落位，
+       * 记忆里 side='left' 的圆钮就会被按到窗口最左边 —— 也就是左侧边栏里
+       * （老大 m01141 报的正是这个）。所以这种时候宁可不落位，等它长好再来。
+       */
+      const frameReady = () => {
+        const el = frameEl();
+        if (!el) return false;
+        try {
+          const rect = el.getBoundingClientRect();
+          return rect.width > 160 && rect.height > 120;
+        } catch { return false; }
+      };
+
       /** 量一次对话框区域；侧边栏展开/收起、窗口改尺寸都会让它变，所以每次都现量。 */
       const frameRect = () => {
         const fallback = { left: 0, top: 0, right: viewW(), bottom: viewH() };
         try {
-          let el = null;
-          for (let i = 0; i < KNOBS_FRAME.length && !el; i += 1) {
-            el = document.querySelector(KNOBS_FRAME[i]);
-          }
+          const el = frameEl();
           if (!el) return fallback;
           const rect = el.getBoundingClientRect();
           if (!rect || !rect.width || !rect.height) return fallback;
@@ -301,6 +324,8 @@
       /** 把记忆里的位置落到样式上（并夹进对话框范围）。 */
       const apply = () => {
         try {
+          // 对话框那一列还没长出来就先不动：CSS 里的出厂位（右下角）比"被按进侧边栏"强。
+          if (!frameReady()) return;
           const area = frameRect();
           const height = pill.offsetHeight || 32;
           const width = pill.offsetWidth || 32;
@@ -317,6 +342,16 @@
           placePanel();
         } catch { /* ignore */ }
       };
+
+      // 刷新后布局是异步长出来的：对话列一旦量得出来（或换了尺寸）就补落一次位。
+      // 只认尺寸变化，不需要 MutationObserver —— 少一条常驻观察，也少一份自己给自己
+      // 加戏的机会（apply 写的是内联样式，不碰尺寸，不会被自己触发成循环）。
+      try {
+        if (typeof ResizeObserver === 'function') {
+          const ro = new ResizeObserver(() => { apply(); });
+          ro.observe(document.documentElement);
+        }
+      } catch { /* 没有 ResizeObserver 就等 window resize */ }
 
       pill.addEventListener('pointerdown', (event) => {
         try {
@@ -409,6 +444,34 @@
       return true;
     };
 
+    // ── ⑤ 深色锁定 ──
+    // 老大 m01089：「帮我改一下只用深色主题界面，不再随通用设置里的外观三个按钮变化。」
+    // DSH 的整套深色变量挂在 body[data-ds-dark-theme] 上（asar 里能看到
+    // `body[data-ds-dark-theme] .xxx{…}` 与 `[data-ds-dark-theme] .BynINW_*`），
+    // 所以不必去改宿主的设置，只要让这个属性永远在场：先补上，盯着被摘走就补回。
+    const DARK_ATTR = 'data-ds-dark-theme';
+    const setupDarkLock = () => {
+      const pin = () => {
+        try {
+          const body = document.body;
+          if (body && !body.hasAttribute(DARK_ATTR)) body.setAttribute(DARK_ATTR, '');
+          const html = document.documentElement;
+          if (html && !html.hasAttribute(DARK_ATTR)) html.setAttribute(DARK_ATTR, '');
+        } catch { /* 钉不住就算了，页面照常 */ }
+      };
+      pin();
+      // pin() 只在属性缺席时写入 —— 写完它就在场，观察者不会自触发成死循环。
+      try {
+        const mo = new MutationObserver(pin);
+        mo.observe(document.documentElement, { attributes: true, attributeFilter: [DARK_ATTR] });
+        if (document.body) mo.observe(document.body, { attributes: true, attributeFilter: [DARK_ATTR] });
+      } catch { /* 没有 MutationObserver：至少开头那一次还生效 */ }
+      // 本脚本早于应用脚本执行，body 可能还没就绪，补一次。
+      try {
+        if (!document.body) document.addEventListener('DOMContentLoaded', pin, { once: true });
+      } catch { /* ignore */ }
+    };
+
     const findPanel = () => {
       // 视频皮肤的面板只带 id、没有 class（CSS 也全走 #dsvs-knobs），
       // 所以必须按 id 找；顺带兼容将来万一补上 class 的版本。
@@ -432,6 +495,9 @@
       if (!panel.querySelector('[data-scenery-music]')) panel.appendChild(buildMusicRow());
       return true;
     };
+
+    // ⑤ 先钉住深色（下面那条 tryMount() 成事就 return 了，别把锁定漏在门外）。
+    try { setupDarkLock(); } catch { /* 锁不上也比崩了强 */ }
 
     if (tryMount()) return; // 面板已存在（本脚本晚于它），一次到位
 

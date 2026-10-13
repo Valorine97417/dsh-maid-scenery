@@ -125,3 +125,82 @@ html[data-dsvs="on"] body:not([data-ds-dark-theme]) {
 html[data-dsvs="on"] body:not([data-ds-dark-theme]) #dsvs-backdrop-veil {
   background: rgba(226, 233, 246, 0.1) !important;
 }
+
+/* ── G. 窗口顶栏与右侧栏：两家都没顾上的两条边 ──
+ *
+ * 冲突现场（老大报的"界面美化还剩两个问题"）：
+ *
+ * ① 顶栏。DSH 在 `html[data-windows-titlebar]` 下用 `.frame::before` 预留了一条
+ *    高度 = `--dsh-windows-titlebar-height` 的拖动区，底色直接取
+ *    `--dsw-specific-sidebar-fill`，一条平色带横在画面上 —— 画面从它下面开始，
+ *    它自己却像块贴上去的色板，跟旁边的主题界面对不上。
+ *    做法（见文末「第二版」）：改成与左栏同族的**实心**深蓝表面，底边缝一条金线。
+ *
+ * ② 右侧栏。Windows 下 `[data-rightbar-col]` 本身没有底色（darwin 才有），
+ *    面板的实底来自主题给**浮层表面**写的 `--dsw-alias-bg-overlay:
+ *    rgba(13,25,59,.98)`（maid-atelier.module.css 里 96–98% 的那一族）——
+ *    视频皮肤只半透明化了 `--dsw-alias-bg-base` 与 sidebar-fill，没管 overlay，
+ *    于是整栏透不上来、只剩一片单调的蓝。
+ *    做法（见文末「第二版」）：同样给实心深蓝表面，顶部一道殿蓝柔光，左边一条金线。
+ *    `[data-dockkit-pane]` / `[data-dockkit-float]` / `[data-sidebar-right-session]`
+ *    都是 DSH 自己写在 DOM 上的稳定锚点（见 ui-sidebar-right 源码），不是哈希类名。
+ *
+ * 两条都只在对应条件成立时生效：没有桌面标题栏、没有右栏时各自空转。
+ *
+ * ── 第二版（2026-10-14，方向修正）──
+ * 第一版把顶栏做成「渐隐收口」、把右栏拉成半透明，想让视频透上来；老大看过说
+ * 「还是一样」——方向反了。他要的不是「让视频透上来」，而是这两条边**看起来是
+ * 主题的一部分**：左栏之所以好看，是因为它有实心深蓝底 + 主题装饰。
+ * 所以两处都改成与左栏同族的**实心**表面，各缝一条金线收边（金只做线）；
+ * 右栏顶部再加一道殿蓝柔光 —— 不然它真的只是「一片蓝」。
+ * 面板承载体也不再压透明：右栏既然要实心，就整层实心，内部卡片保留自己的层次。 */
+
+[data-windows-titlebar] [class*='BynINW_frame']::before,
+[data-windows-titlebar] [class*='frame']::before {
+  /* 第三版：直接向主题要底色 —— maid-atelier 把面板蓝写在 --dsw-alias-bg-layer-2
+     （#182850d1）上，顶栏取同一个变量就不存在「像不像主题」的问题了；
+     底下垫一层从顶部泛开的殿蓝柔光，让这条 40px 的带子也有厚度。 */
+  background:
+    radial-gradient(124% 58% at 50% -18%, rgba(82, 106, 168, 0.3), rgba(82, 106, 168, 0) 62%),
+    var(--dsw-alias-bg-layer-2, rgba(24, 40, 80, 0.94)) !important;
+  box-shadow:
+    0 1px 0 rgba(197, 164, 104, 0.46),
+    0 8px 20px rgba(4, 10, 26, 0.28);
+}
+
+[data-rightbar-col] {
+  --dsw-alias-bg-overlay: rgba(13, 25, 59, 0.97);
+  --dsw-alias-bg-base: rgba(13, 25, 59, 0.96);
+  background:
+    radial-gradient(118% 52% at 50% 0%, rgba(82, 106, 168, 0.26), rgba(82, 106, 168, 0) 64%),
+    linear-gradient(180deg, rgba(13, 25, 59, 0.97), rgba(10, 19, 45, 0.98)) !important;
+  box-shadow: inset 1px 0 0 rgba(197, 164, 104, 0.34);
+}
+
+/* 亮色下换成同族的冷调瓷白（理由同 E 段：纯白表面在亮壁纸上过亮）。 */
+html[data-dsvs="on"] body:not([data-ds-dark-theme]) [class*='frame']::before {
+  background: linear-gradient(180deg, rgba(240, 244, 251, 0.97), rgba(233, 239, 249, 0.94)) !important;
+  box-shadow:
+    0 1px 0 rgba(163, 130, 76, 0.36),
+    0 8px 20px rgba(120, 140, 180, 0.18);
+}
+
+html[data-dsvs="on"] body:not([data-ds-dark-theme]) [data-rightbar-col] {
+  --dsw-alias-bg-overlay: rgba(240, 244, 251, 0.97);
+  --dsw-alias-bg-base: rgba(238, 242, 250, 0.96);
+  background:
+    radial-gradient(118% 52% at 50% 0%, rgba(120, 148, 208, 0.22), rgba(120, 148, 208, 0) 64%),
+    linear-gradient(180deg, rgba(240, 244, 251, 0.97), rgba(232, 238, 248, 0.98)) !important;
+  box-shadow: inset 1px 0 0 rgba(163, 130, 76, 0.3);
+}
+
+/* ─────────────────────────────────────────────────────────────
+ * H 段：深色锁定（老大 m01089）
+ *   原话：「帮我改一下只用深色主题界面，不再随通用设置里的外观三个按钮变化。」
+ *   DSH 的深色变量挂在 body[data-ds-dark-theme] 上，那个属性由 runtime/scenery.js ⑤
+ *   钉住（缺了就补回）；这里只补 CSS 管得到的那部分：把 color-scheme 交给深色，
+ *   滚动条与原生控件（输入框、下拉、日期选择）才不会在深色界面上跳回亮色。 */
+html[data-ds-dark-theme],
+html:has(body[data-ds-dark-theme]) {
+  color-scheme: dark;
+}
