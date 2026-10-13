@@ -224,7 +224,7 @@
     const KNOBS_SLOP = 4;  // 位移小于这个值算点击，不算拖
     // 活动范围 = 对话框（DSH 布局里中间那一列，class 名带 centerCol；左边是侧边栏）。
     // 选择器按可靠性排序，全落空就退回整个视口——选择器哪天变了也不至于拖不动。
-    const KNOBS_FRAME = ["[class*='centerCol']", "[data-slot='conversation.session']", 'main'];
+    const KNOBS_FRAME = ["[class*='centerCol']", "[data-slot='conversation.session']"];
 
     const readKnobs = () => {
       try {
@@ -284,7 +284,10 @@
         if (!el) return false;
         try {
           const rect = el.getBoundingClientRect();
-          return rect.width > 160 && rect.height > 120;
+          // 左缘贴着窗口左壁的"对话列"其实是整页容器（把侧边栏也算进去了）：那不算数，
+          // 否则 side='left' 的圆钮会被按进侧边栏里（老大 m01141 / m01169 两次报的就是它）。
+          // 侧边栏哪怕折叠着也有 56px 宽，所以 40px 这条线是安全的。
+          return rect.width > 160 && rect.height > 120 && rect.left >= 40;
         } catch { return false; }
       };
 
@@ -352,6 +355,11 @@
           ro.observe(document.documentElement);
         }
       } catch { /* 没有 ResizeObserver 就等 window resize */ }
+
+      // 只信 ResizeObserver 不够：布局从"还没内容"长到"有内容"时，被观察的元素尺寸
+      // 可能一点没变，它根本不回调 —— 初帧那次错误落位就这么留在了屏幕上。几个时间点
+      // 各补落一次位，代价是几次无副作用的赋值（apply 幂等，且自己不改尺寸）。
+      [0, 150, 500, 1500].forEach((ms) => { setTimeout(apply, ms); });
 
       pill.addEventListener('pointerdown', (event) => {
         try {

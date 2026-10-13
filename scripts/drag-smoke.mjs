@@ -11,7 +11,8 @@
  *   ④ 松手吸到对话框最近的一侧，垂直位置留住；
  *   ⑤ 位置写进 localStorage，下次开页面直接回原位；
  *   ⑥ 侧边栏收起（对话框变宽）后圆钮跟着挪；
- *   ⑦ 拖动尾巴那一次 click 被吞掉（不顺手弹面板），之后的点击照旧放行。
+ *   ⑦ 拖动尾巴那一次 click 被吞掉（不顺手弹面板），之后的点击照旧放行；
+ *   ⑧ 刷新瞬间布局还没长好时不落位（否则圆钮会被按进侧边栏）。
  *
  * 跑法：node scripts/drag-smoke.mjs
  */
@@ -30,7 +31,7 @@ const check = (name, ok) => {
 };
 
 /** 造一个迷你 DOM 世界，返回 { pill, panel, frame, fire, resize, store, … }。 */
-function makeWorld(seed = {}) {
+function makeWorld(seed = {}, frameLeft = 160) {
   const viewport = { w: 1200, h: 800 };
   const listeners = new WeakMap();
   const winListeners = {};
@@ -106,8 +107,9 @@ function makeWorld(seed = {}) {
   });
 
   // 代表"对话框"的中间列：左边 160px 是侧边栏，顶上 48px 是窗口标题条。
+  // frameLeft 传 0 就是"布局还没长好"的样子：那时量到的其实是含侧边栏的整页容器。
   const frame = el('centerCol', { w: 1040, h: 752 });
-  frame.rect = { left: 160, top: 48 };
+  frame.rect = { left: frameLeft, top: 48 };
   frame.getBoundingClientRect = function () {
     return {
       left: this.rect.left,
@@ -215,10 +217,15 @@ check('右半边吸右（贴对话框右缘 16px）', d.pill.style.left === '115
 // ⑥ 侧边栏收起：对话框变宽，吸在左侧的圆钮跟着挪到新的左缘。
 const f = makeWorld({ 'dsh-maid-scenery-knobs': JSON.stringify({ side: 'left', y: 384 }) });
 check('侧边栏展开时贴对话框左缘 16px', f.pill.style.left === '176px');
-f.frame.rect.left = 0;        // 侧边栏收起，中间列铺到最左
-f.frame.offsetWidth = 1200;
+f.frame.rect.left = 56;       // 侧边栏收起成 56px 窄条，中间列挪到新的左缘
+f.frame.offsetWidth = 1144;
 f.resize();
-check('侧边栏收起后圆钮跟着对话框挪到新的左缘', f.pill.style.left === '16px' && f.pill.style.bottom === '384px');
+check('侧边栏收起后圆钮跟着对话框挪到新的左缘', f.pill.style.left === '72px' && f.pill.style.bottom === '384px');
+
+// ⑧ 刷新瞬间：布局还没长好，量到的"对话列"其实是含侧边栏的整页容器（左缘贴着窗口）。
+//    这时候落位就会把 side='left' 的圆钮按进侧边栏里 —— 老大 m01141 / m01169 报的正是它。
+const g = makeWorld({ 'dsh-maid-scenery-knobs': JSON.stringify({ side: 'left', y: 384 }) }, 0);
+check('布局没长好时不落位（内联样式保持空白，圆钮留在 CSS 出厂位）', Object.keys(g.pill.style).length === 0);
 
 console.log(`\n${pass} PASS / ${fail} FAIL`);
 process.exit(fail === 0 ? 0 : 1);
