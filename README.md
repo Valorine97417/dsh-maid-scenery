@@ -78,6 +78,8 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
 
 > 已知边界：皮肤管理器的「切换」开关管的是 `maid-scenery` 这一条 entry 的 `disabled`。由于主题本来就是本包的一部分（随 `client.js` 常驻物化），把它关掉只会停掉融合层的切换行，不会卸掉主题本身——真正的「换成别的皮肤」要等上游支持包内皮肤再补。当前本机只有这一套皮肤，不影响使用。
 
+**不装皮肤管理器也能保住你的设置**：定制项（立绘、字体、导航、输入框、横幅高度）的**登记**在本包 `client.js`，而**执行**一向由皮肤管理器负责——它读自己的偏好表再回调 `apply`。只装本包时没人调用，观感会掉回样式表默认。0.2.1 起本包自带兜底：启动时自己读同一份 `localStorage['dsh.skin-manager.preferences.v2']` 并投影一次，之后管理器上线照旧接管（两边同源，不会互相覆盖）。**出厂基线也集中一处**：`client.js` 的 `SKIN_DEFAULTS` 同时喂给 `settings.defaultValue` 与兜底投影，新装用户看到的默认样子在这里改一次就够。
+
 **为什么要整合**：pnpm 的 `blockExoticSubdeps` 供应链策略禁止 git 协议依赖藏在子依赖里（本包 v0.1.0 就撞过），上游主题只能降为 optional peer——那样「装一个包」就永远做不到，三家谁缺席都要用户自己排查。整合后依赖关系只剩一条，规则也不再需要条件化。
 
 ## 设计约束（都来自视频皮肤踩过的坑）
@@ -89,6 +91,12 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
 - 两家的 `apply` 各自包 `try`——一家挂了不拖死另一家，融合层的切换行照旧可用。
 
 ## 变更
+
+### 0.2.1
+
+- **出厂基线集中一处**：新增 `SKIN_DEFAULTS`（`client.js`），设置页每一项的 `defaultValue` 都从它取值，不再是散落的字面量。以后想改「新装用户看到的默认样子」，改这一处即可。
+- **不装皮肤管理器也能保住设置**：启动时自己读 `localStorage['dsh.skin-manager.preferences.v2']` 的 `maid-atelier` 段并投影一次（含「不那么二次元模式」的时间段判断）。管理器在线时会重新 `apply`，读的是同一份值——同源，不打架。
+- 「显示双女仆立绘」默认关、「对话区字体」默认 Georgia 衬线（#22），与主人的取舍对齐。
 
 ### 0.2.0
 

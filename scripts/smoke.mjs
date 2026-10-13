@@ -168,7 +168,7 @@ if (audioOnDisk.length === 0) {
   const cfg = loadConfig({
     packageRoot: fileURLToPath(root('vendor/video-skin/')),
     homeDir: tmpHome,
-    version: '0.2.0',
+    version: '0.2.1',
     routes: {
       boot: BOOT_ROUTE, background: BACKGROUND_ROUTE, music: MUSIC_ROUTE,
       tracks: TRACKS_ROUTE, config: CONFIG_ROUTE, override: OVERRIDE_ROUTE,
@@ -262,6 +262,37 @@ check('client 含主题段拼接标记', /maid-atelier 客户端/.test(client));
 check('client 无残留 sourceMappingURL', !/^\/\/# sourceMappingURL=/m.test(client));
 check('client 导出 inject/apply', /return \{ inject, apply \}/.test(client));
 
+// ---- 出厂基线 + 无管理器兜底（0.2.1）----
+// 出厂基线集中在 SKIN_DEFAULTS：设置页的 defaultValue 与独立兜底读的是同一份，
+// 想改「新装用户看到的默认样子」只动一处，不会两边打架。
+const defaultsBlock = client.match(/const SKIN_DEFAULTS = Object\.freeze\(\{([\s\S]*?)\}\);/)?.[1] ?? '';
+check('client 有统一出厂基线 SKIN_DEFAULTS', defaultsBlock.length > 0);
+const baseline = {
+  artwork: 'false',
+  font: '"serif"',
+  workspaceFont: '"serif"',
+  modelExit: 'false',
+  mobileModelExit: 'true',
+  flashGlasses: 'false',
+  mobileNav: '"corner"',
+  composerMode: '"persistent"',
+  composerBottomOnly: 'false',
+  workspaceRowHeight: 'WORKSPACE_ROW_HEIGHT_DEFAULT'
+};
+for (const [key, value] of Object.entries(baseline)) {
+  check(`出厂基线 ${key} = ${value}`,
+    new RegExp(`\\b${key}:\\s*${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[,\\n]`).test(defaultsBlock));
+}
+check('设置页的 defaultValue 一律取自 SKIN_DEFAULTS（不留裸字面量）',
+  (client.match(/defaultValue: SKIN_DEFAULTS\./g) ?? []).length === Object.keys(baseline).length &&
+  !/defaultValue: (?:true|false|"(?:system|serif|corner|persistent)"|WORKSPACE_ROW_HEIGHT_DEFAULT)/.test(client));
+// 兜底：设置页只负责「登记」，真正调用 apply 的是皮肤管理器。没装管理器时
+// 没人调用，观感会掉回样式表默认——所以皮肤自己读同一份 localStorage 投影一次。
+check('client 自读管理器偏好键（同源不打架）', /dsh\.skin-manager\.preferences\.v2/.test(client));
+check('client 有无管理器兜底 apply', /readManagedPreferences\(SKIN_ID\)/.test(client));
+check('兜底 apply 复用同一份出厂基线', /SKIN_DEFAULTS\.composerMode/.test(client) && /SKIN_DEFAULTS\.mobileNav/.test(client));
+check('兜底 apply 不引入脚本注入（仍只推 style/script）', !/script-src/.test(client));
+
 // ---- 许可三件套 ----
 check('根 LICENSE 声明双许可边界', /CC BY-NC-SA 4\.0/.test(readFileSync(url('../LICENSE'), 'utf8')));
 check('根 NOTICE 含三创署名链', /上善[\s\S]*ZipZipPipe[\s\S]*Small-tailqwq/.test(readFileSync(url('../NOTICE'), 'utf8')));
@@ -283,7 +314,7 @@ check('skin.json.desktopIcon 在包里且是 .ico', size(skin.desktopIcon) > 0 &
 check('skin.json 里没有绝对路径（皮肤管理器会拒）', ![skin.preview?.light, skin.preview?.dark, skin.desktopIcon].some((p) => /^[a-zA-Z]:|^\//.test(p ?? '')));
 
 // ---- 包元信息 ----
-check('版本 0.2.0', pkg.version === '0.2.0', pkg.version);
+check('版本 0.2.1', pkg.version === '0.2.1', pkg.version);
 check('files 含 vendor 与 client.js', pkg.files.includes('vendor') && pkg.files.includes('client.js'));
 check('files 含 skin.json', pkg.files.includes('skin.json'));
 check('exports 暴露 ./client', pkg.exports['./client'] === './client.js');

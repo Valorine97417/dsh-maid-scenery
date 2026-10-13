@@ -1277,6 +1277,52 @@ try {
   		const WORKSPACE_ROW_HEIGHT_MIN = 22;
   		const WORKSPACE_ROW_HEIGHT_MAX = 54;
   		const WORKSPACE_ROW_HEIGHT_PROPERTY = "--maid-workspace-row-height";
+  		const SKIN_ID = "maid-atelier";
+  		const PREFERENCES_KEY = "dsh.skin-manager.preferences.v2";
+  		/**
+  		 * Factory baseline for the exposed settings. The settings page and the
+  		* standalone fallback both read these, so one place decides the look.
+  		*/
+  		const SKIN_DEFAULTS = Object.freeze({
+  			artwork: false,
+  			font: "serif",
+  			workspaceFont: "serif",
+  			modelExit: false,
+  			mobileModelExit: true,
+  			flashGlasses: false,
+  			mobileNav: "corner",
+  			composerMode: "persistent",
+  			composerBottomOnly: false,
+  			workspaceRowHeight: WORKSPACE_ROW_HEIGHT_DEFAULT
+  		});
+  		/** Read the manager\'s own preference block; sharing the schema keeps both sides in sync. */
+  		function readManagedPreferences(skinId) {
+  			try {
+  				const raw = window.localStorage.getItem(PREFERENCES_KEY);
+  				if (raw === null) return null;
+  				const block = JSON.parse(raw)?.[skinId];
+  				return block !== null && typeof block === "object" ? block : null;
+  			} catch {
+  				return null;
+  			}
+  		}
+  		/** Mirror the manager\'s schedule semantics so a timed artwork hides on time, manager or not. */
+  		function artworkVisibility(schedule) {
+  			if (schedule === null || typeof schedule !== "object" || schedule.enabled !== true) return true;
+  			const now = new Date();
+  			const minutes = now.getHours() * 60 + now.getMinutes();
+  			const toMinutes = (value) => {
+  				const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
+  				return match === null ? null : Number(match[1]) * 60 + Number(match[2]);
+  			};
+  			const inside = (Array.isArray(schedule.ranges) ? schedule.ranges : []).some((range) => {
+  				const start = toMinutes(range.start);
+  				const end = toMinutes(range.end);
+  				if (start === null || end === null || start === end) return false;
+  				return start < end ? minutes >= start && minutes < end : minutes >= start || minutes < end;
+  			});
+  			return schedule.outside === "visible" ? !inside : inside;
+  		}
   		/** Restore the original inline value and priority only while this writer owns it. */
   		var SkinPropertyProjector = class {
   			root;
@@ -1371,7 +1417,7 @@ try {
   			};
   			const synchronizeModelMode = () => {
   				if (activeState === null) return;
-  				const modelExit = mobile ? activeState.values.mobileModelExit !== false : activeState.values.modelExit === true;
+  				const modelExit = (mobile ? activeState.values.mobileModelExit : activeState.values.modelExit) ?? SKIN_DEFAULTS[mobile ? "mobileModelExit" : "modelExit"];
   				projector.set(ATTR_MODEL_EXIT, modelExit ? "enabled" : "disabled");
   				if (modelExit) startModelObserver();
   				else stopModelObserver();
@@ -1394,20 +1440,31 @@ try {
   				if (activeState === null) window.addEventListener("resize", onResize);
   				activeState = state;
   				mobile = window.innerWidth <= 700;
-  				const artwork = state.values.artwork === true;
+  				const artwork = state.values.artwork === void 0 ? SKIN_DEFAULTS.artwork : state.values.artwork === true;
   				const scheduleVisible = state.visibility.sfwMode !== false;
   				projector.set(ATTR_ART, artwork && scheduleVisible ? "visible" : "hidden");
-  				projector.set(ATTR_FONT, state.values.font === "serif" ? "serif" : "system");
+  				projector.set(ATTR_FONT, state.values.font === "system" ? "system" : SKIN_DEFAULTS.font);
   				const workspaceFont = state.values.workspaceFont;
-  				projector.set(ATTR_WORKSPACE_FONT, typeof workspaceFont === "string" && WORKSPACE_FONTS.has(workspaceFont) ? workspaceFont : "serif");
+  				projector.set(ATTR_WORKSPACE_FONT, typeof workspaceFont === "string" && WORKSPACE_FONTS.has(workspaceFont) ? workspaceFont : SKIN_DEFAULTS.workspaceFont);
   				projector.set(ATTR_FLASH_GLASSES, state.values.flashGlasses === true ? "on" : "off");
   				synchronizeModelMode();
-  				projector.set(ATTR_COMPOSER_MODE, typeof state.values.composerMode === "string" ? state.values.composerMode : "persistent");
+  				projector.set(ATTR_COMPOSER_MODE, typeof state.values.composerMode === "string" ? state.values.composerMode : SKIN_DEFAULTS.composerMode);
   				projector.set(ATTR_COMPOSER_BOTTOM_ONLY, state.values.composerBottomOnly === true ? "on" : "off");
   				const navMode = state.values.mobileNav;
-  				projector.set(ATTR_NAV_MODE, typeof navMode === "string" && NAV_MODES.has(navMode) ? navMode : "corner");
+  				projector.set(ATTR_NAV_MODE, typeof navMode === "string" && NAV_MODES.has(navMode) ? navMode : SKIN_DEFAULTS.mobileNav);
   				properties.set(WORKSPACE_ROW_HEIGHT_PROPERTY, `${workspaceRowHeight(state.values.workspaceRowHeight)}px`);
   			};
+  			/**
+  			 * The settings page normally drives `apply`: with no manager around nothing
+  			 * would ever call it and the look would fall back to the stylesheet. So the
+  			 * skin projects the stored values once by itself. A manager that shows up
+  			 * re-applies from the very same source, so the two never fight.
+  			 */
+  			const stored = readManagedPreferences(SKIN_ID) ?? {};
+  			apply({
+  				values: stored,
+  				visibility: { sfwMode: artworkVisibility(stored.sfwMode) }
+  			});
   			return exposeSkinCustomization({
   				protocol: 2,
   				skinId: "maid-atelier",
@@ -1419,7 +1476,7 @@ try {
   						type: "boolean",
   						label: "显示双女仆立绘",
   						labelEn: "Show the twin maid artwork",
-  						defaultValue: true
+  						defaultValue: SKIN_DEFAULTS.artwork
   					},
   					{
   						key: "sfwMode",
@@ -1439,7 +1496,7 @@ try {
   						type: "select",
   						label: "对话区字体",
   						labelEn: "Conversation font",
-  						defaultValue: "system",
+  						defaultValue: SKIN_DEFAULTS.font,
   						options: [{
   							value: "system",
   							label: "系统默认无衬线",
@@ -1457,7 +1514,7 @@ try {
   						labelEn: "Sidebar font",
   						description: "调整侧栏中工作区和会话标签的字体。",
   						descriptionEn: "Font for workspace and conversation labels in the sidebar.",
-  						defaultValue: "serif",
+  						defaultValue: SKIN_DEFAULTS.workspaceFont,
   						options: [
   							{
   								value: "serif",
@@ -1481,14 +1538,14 @@ try {
   						type: "boolean",
   						label: "桌面端根据所选模型显示立绘",
   						labelEn: "Show artwork based on the selected model on desktop",
-  						defaultValue: false
+  						defaultValue: SKIN_DEFAULTS.modelExit
   					},
   					{
   						key: "mobileModelExit",
   						type: "boolean",
   						label: "移动端根据所选模型显示立绘",
   						labelEn: "Show artwork based on the selected model on mobile",
-  						defaultValue: true
+  						defaultValue: SKIN_DEFAULTS.mobileModelExit
   					},
   					{
   						key: "flashGlasses",
@@ -1497,7 +1554,7 @@ try {
   						labelEn: "flash 🧐 glasses artwork",
   						description: "flash 模型改用带眼镜的立绘。",
   						descriptionEn: "Use the glasses artwork for the flash model.",
-  						defaultValue: false,
+  						defaultValue: SKIN_DEFAULTS.flashGlasses,
   						visibleWhen: {
   							key: "mobileModelExit",
   							values: [true],
@@ -1517,7 +1574,7 @@ try {
   						labelEn: "Phone navigation layout",
   						description: "仅影响竖屏手机（宽度 ≤700px）：左上角品牌图标（默认）、横向顶栏，或宿主原本的纵向侧栏。桌面与横屏不受影响。",
   						descriptionEn: "Portrait phones only (≤700px wide): a brand mark in the top-left corner (default), a horizontal top bar, or the host’s own vertical column. Desktop and landscape are untouched.",
-  						defaultValue: "corner",
+  						defaultValue: SKIN_DEFAULTS.mobileNav,
   						options: [
   							{
   								value: "corner",
@@ -1543,7 +1600,7 @@ try {
   						labelEn: "Composer visibility mode",
   						description: "始终显示；空态胶囊在输入框为空且未聚焦时收起为简约胶囊；滚动显隐在上滚回顾时隐去、下滚渐现。",
   						descriptionEn: "Always visible; the idle capsule collapses to a slim capsule while the composer is empty and unfocused; scroll mode hides it when scrolling up to review and reveals it when scrolling down.",
-  						defaultValue: "persistent",
+  						defaultValue: SKIN_DEFAULTS.composerMode,
   						options: [
   							{
   								value: "persistent",
@@ -1569,7 +1626,7 @@ try {
   						labelEn: "Show the composer only at the conversation bottom",
   						description: "只在滚到最新消息末尾时显示输入框，向上回看时它自然隐去、回到底部再显现。开启后接管上面的「上滚隐去 · 下滚渐现」。",
   						descriptionEn: "Show the composer only while the conversation sits at its newest message; it fades away while reading back and returns at the bottom. Takes over the scroll mode above.",
-  						defaultValue: false
+  						defaultValue: SKIN_DEFAULTS.composerBottomOnly
   					},
   					{
   						key: "workspaceRowHeight",
@@ -1579,7 +1636,7 @@ try {
   						labelEn: "Workspace banner height",
   						description: "仅影响工作区标签，不影响会话标签。",
   						descriptionEn: "Only affects workspace labels, not conversation labels.",
-  						defaultValue: WORKSPACE_ROW_HEIGHT_DEFAULT,
+  						defaultValue: SKIN_DEFAULTS.workspaceRowHeight,
   						min: WORKSPACE_ROW_HEIGHT_MIN,
   						max: WORKSPACE_ROW_HEIGHT_MAX,
   						step: 1,
