@@ -61,6 +61,18 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
   - 「打开音乐位置」拉起系统文件管理器（资源管理器 / Finder / xdg-open）直接落到 `assets/` 目录，目录不存在会先建出来。
   两个端点由本包宿主半边提供：`/dsh-maid-scenery/music.json`（报目录与曲目清单）、`/dsh-maid-scenery/open-music-folder`（只认 POST，免得页面一加载就被预取弹窗）。
 
+## 面板圆钮可以拖
+
+聊天背景那个圆钮（◨）上游是焊死在右下角的（`#dsvs-knobs-pill` 的 `right:16px / bottom:16px`）。宽屏下它离聊天区很远，所以本包在融合层给它加了**拖动 + 就近吸边**：按住拖到顺手的位置（比如左下角跟挂件并排），松手吸到最近的一侧，垂直位置留住。
+
+- 位置记在 `localStorage['dsh-maid-scenery-knobs']`（`{side:'left'|'right', y}`）：换页面、重开 DSH 都还在原处；读不到存储就退回右下角的出厂位置。
+- 面板跟着圆钮走：默认贴在圆钮**上方**，上方塞不下（圆钮被拖到屏幕上半段）自动翻到下方。
+- 拖动时先把面板收起（不然一个 268px 的框跟着飘），松手那一次 `click` 被吞掉——不会「拖完顺手把面板打开」。一次没动的点击照旧是开关面板（`Alt+B` 同理）。
+- 触摸屏可用：给可拖圆钮开了 `touch-action: none`，否则手指一动会变成滚聊天记录。
+- 只改圆钮与面板的定位样式，**不碰 vendor**：点击开合、透明度滑块、音乐音量那一整套仍归视频皮肤自己。
+
+想知道拖得对不对，别靠眼看：`node scripts/drag-smoke.mjs` 会把 `runtime/scenery.js` 真拉进一个迷你 DOM 里跑，喂一串 `pointerdown / move / up`，断言跟手、吸边、夹回视口、位置记忆与点击吞噬（14 条）。
+
 **皮肤管理器怎么还认得出**：皮肤管理器（`@smalltailqwq/dsh-client-ui-skin-deep-whale-manager`）只从 profile 的依赖里找带 `skin.json` 的包，且要求清单里的 `package` 字段等于已装包名。整合后 maid-atelier 不再是独立依赖，所以本包**在包根自曝一份 `skin.json`**：`id` 仍写 `maid-atelier`（换源时「先卸旧主题」的规则不变），`package` 改成本包名，`wiring.id` 对齐本包自己的 patch entry `maid-scenery`，`preview` 与 `desktopIcon` 指到 `vendor/maid-atelier/` 下。于是面板里照旧显示「深海女仆工坊」与它的定制控件。
 
 > 已知边界：皮肤管理器的「切换」开关管的是 `maid-scenery` 这一条 entry 的 `disabled`。由于主题本来就是本包的一部分（随 `client.js` 常驻物化），把它关掉只会停掉融合层的切换行，不会卸掉主题本身——真正的「换成别的皮肤」要等上游支持包内皮肤再补。当前本机只有这一套皮肤，不影响使用。
@@ -82,6 +94,7 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
 - **整合两家配套随包分发**：`vendor/video-skin/` 与 `vendor/maid-atelier/` 零修改内置，装一个包全齐，卸载配套插件也不影响。宿主半边由 `index.js` 装配，客户端半边由 `client.js` 物化。上游主题的 optional peer 依赖随之删除。
 - **包根自曝 `skin.json`**：整合后 maid-atelier 不再是独立依赖，皮肤管理器便发现不到它。现在本包自己声明皮肤清单（`package` 指向本包、`wiring.id` 对齐 `maid-scenery`），「皮肤管理」面板重新显示「深海女仆工坊」。
 - **商业版权音频不入库**：视频皮肤上游 `assets/` 只有 `boot.mp4` 与 `background.mp4`；本机曾额外放入 4 个 C418 的 `.flac`，整合时按扩展名挡在 **git 索引**之外（本地自用照旧，不进仓库即不构成再分发）。怎么配自己的背景音乐见上节「背景音乐（自备，不入库）」。
+- **面板圆钮可拖**：聊天背景的圆钮加了拖动 + 就近吸边 + 位置记忆（见上节「面板圆钮可以拖」），上游写死的右下角不再是唯一答案。
 - **双许可结构**：本包代码 MIT；`vendor/maid-atelier/` 的美术素材仍为上游声明的 CC BY-NC-SA 4.0，署名链完整保留在 `NOTICE`，许可正文在 `LICENSE-ARTWORK`，上游原始声明在 `vendor/maid-atelier/LICENSE-upstream`。
 
 ### 0.1.4

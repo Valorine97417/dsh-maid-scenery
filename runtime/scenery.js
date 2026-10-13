@@ -213,6 +213,173 @@
       return row;
     };
 
+    // ── 圆钮拖动吸附（面板跟着走） ──────────────────────────────────────
+    // 视频皮肤的圆钮写死 right:16px / bottom:16px（skin.css 里 #dsvs-knobs-pill），
+    // 宽屏下它离聊天区很远，想挪到顺手的位置（比如左下角跟挂件并排）就只能改源码。
+    // 这里补上：按住拖动 → 松手吸最近的一侧 → 位置记进 localStorage，下次开页面还在原处。
+    // 只改圆钮与面板的定位样式，**不碰 vendor 的点击开合逻辑**：拖动结束时吞掉那一次
+    // click，免得"拖完顺手把面板打开了"。
+    const KNOBS_KEY = 'dsh-maid-scenery-knobs';
+    const KNOBS_GAP = 16;  // 吸附后与屏幕边缘的间距（对齐 vendor 原本的 16px）
+    const KNOBS_SLOP = 4;  // 位移小于这个值算点击，不算拖
+
+    const readKnobs = () => {
+      try {
+        const raw = JSON.parse(localStorage.getItem(KNOBS_KEY) || 'null');
+        // 只认完整的两字段：半截数据（比如换版本后改过结构）宁可退回默认位置。
+        if (raw && (raw.side === 'left' || raw.side === 'right') && Number.isFinite(raw.y)) {
+          return { side: raw.side, y: raw.y };
+        }
+      } catch { /* 读不到就当没存过 */ }
+      return null;
+    };
+    const writeKnobs = (pos) => {
+      try { localStorage.setItem(KNOBS_KEY, JSON.stringify(pos)); } catch { /* 会话内照样生效 */ }
+    };
+
+    const setupKnobs = () => {
+      let pill = null;
+      let panel = null;
+      try {
+        pill = document.getElementById('dsvs-knobs-pill');
+        panel = document.getElementById('dsvs-knobs');
+      } catch { return false; }
+      if (!pill || pill.dataset.sceneryDrag === '1') return false;
+      pill.dataset.sceneryDrag = '1';   // 幂等：面板重建时这个标记随新元素一起重来
+
+      let pos = readKnobs() || { side: 'right', y: KNOBS_GAP };
+      let dragging = false;
+      let moved = false;
+      let swallow = false;   // 这一次 click 属于拖动的尾巴，不是"打开面板"
+      let startX = 0;
+      let startY = 0;
+      let startRect = null;
+
+      const viewW = () => window.innerWidth || 0;
+      const viewH = () => window.innerHeight || 0;
+
+      /** 面板贴着圆钮放：默认在上方，上方塞不下就翻到下方。 */
+      const placePanel = () => {
+        if (!panel) return;
+        try {
+          const rect = pill.getBoundingClientRect();
+          if (!rect.width) return;
+          const leftSide = rect.left + rect.width / 2 < viewW() / 2;
+          panel.style.left = leftSide ? Math.max(8, Math.round(rect.left)) + 'px' : 'auto';
+          panel.style.right = leftSide ? 'auto' : Math.max(8, Math.round(viewW() - rect.right)) + 'px';
+          const height = panel.offsetHeight || 0;   // 收起时是 0，先按"上方放得下"处理
+          if (height === 0 || rect.top - 10 - height >= 8) {
+            panel.style.top = 'auto';
+            panel.style.bottom = Math.round(viewH() - rect.top + 10) + 'px';
+          } else {
+            panel.style.bottom = 'auto';
+            panel.style.top = Math.round(rect.bottom + 10) + 'px';
+          }
+        } catch { /* 定位失败就退回 CSS 里的默认角落 */ }
+      };
+
+      /** 把记忆里的位置落到样式上（并夹进视口）。 */
+      const apply = () => {
+        try {
+          const height = pill.offsetHeight || 32;
+          const y = Math.max(8, Math.min(pos.y, Math.max(8, viewH() - height - 8)));
+          pos = { side: pos.side, y: Math.round(y) };
+          pill.style.top = 'auto';
+          pill.style.bottom = pos.y + 'px';
+          pill.style.left = pos.side === 'left' ? KNOBS_GAP + 'px' : 'auto';
+          pill.style.right = pos.side === 'right' ? KNOBS_GAP + 'px' : 'auto';
+          placePanel();
+        } catch { /* ignore */ }
+      };
+
+      pill.addEventListener('pointerdown', (event) => {
+        try {
+          if (event.pointerType === 'mouse' && event.button !== 0) return;
+          dragging = true;
+          moved = false;
+          startX = event.clientX;
+          startY = event.clientY;
+          startRect = pill.getBoundingClientRect();
+          pill.style.transition = 'none';   // 拖动期间别跟 CSS 的 220ms 过渡打架
+          if (typeof pill.setPointerCapture === 'function') {
+            try { pill.setPointerCapture(event.pointerId); } catch { /* 拿不到捕获也能拖 */ }
+          }
+        } catch { /* ignore */ }
+      });
+
+      pill.addEventListener('pointermove', (event) => {
+        if (!dragging) return;
+        try {
+          const dx = event.clientX - startX;
+          const dy = event.clientY - startY;
+          if (!moved) {
+            if (Math.abs(dx) < KNOBS_SLOP && Math.abs(dy) < KNOBS_SLOP) return;
+            moved = true;
+            // 一开拖就把面板收起：边拖边飘一个 268px 的框既难看也挡路。
+            if (panel) {
+              panel.setAttribute('data-open', '0');
+              pill.setAttribute('data-active', '0');
+            }
+          }
+          if (event.cancelable) event.preventDefault();
+          const left = Math.max(8, Math.min(startRect.left + dx, viewW() - startRect.width - 8));
+          const top = Math.max(8, Math.min(startRect.top + dy, viewH() - startRect.height - 8));
+          pill.style.left = Math.round(left) + 'px';
+          pill.style.top = Math.round(top) + 'px';
+          pill.style.right = 'auto';
+          pill.style.bottom = 'auto';
+        } catch { /* ignore */ }
+      });
+
+      const finish = (event) => {
+        if (!dragging) return;
+        dragging = false;
+        try { pill.style.transition = ''; } catch { /* ignore */ }
+        try {
+          if (event && typeof pill.releasePointerCapture === 'function') {
+            pill.releasePointerCapture(event.pointerId);
+          }
+        } catch { /* 没捕获过就没什么可放 */ }
+        if (!moved) return;   // 一路没动：这次点击归 vendor 的开合逻辑
+        try {
+          const rect = pill.getBoundingClientRect();
+          pos = {
+            side: rect.left + rect.width / 2 < viewW() / 2 ? 'left' : 'right',
+            y: viewH() - rect.bottom,
+          };
+          writeKnobs(pos);
+        } catch { /* 存不住也照样吸附 */ }
+        // pointerup 之后紧跟的那次 click 是拖动的尾巴：吞掉它，别顺手开面板。
+        swallow = true;
+        try { setTimeout(() => { swallow = false; }, 0); } catch { swallow = false; }
+        apply();
+      };
+
+      pill.addEventListener('pointerup', finish);
+      pill.addEventListener('pointercancel', finish);
+      pill.addEventListener('click', (event) => {
+        if (!swallow) return;
+        swallow = false;
+        try { event.stopImmediatePropagation(); } catch { /* ignore */ }
+        try { event.preventDefault(); } catch { /* ignore */ }
+      }, true);
+
+      // 面板每次展开都重新定位一次（收起时量不到它的高度）。
+      try {
+        const watch = new MutationObserver(() => {
+          if (panel && panel.getAttribute('data-open') === '1') placePanel();
+        });
+        watch.observe(panel, { attributes: true, attributeFilter: ['data-open'] });
+      } catch { /* 没有 MutationObserver 就靠 apply 那一次 */ }
+
+      try {
+        window.addEventListener('resize', apply);
+      } catch { /* ignore */ }
+
+      apply();
+      return true;
+    };
+
     const findPanel = () => {
       // 视频皮肤的面板只带 id、没有 class（CSS 也全走 #dsvs-knobs），
       // 所以必须按 id 找；顺带兼容将来万一补上 class 的版本。
@@ -222,6 +389,8 @@
 
     const tryMount = () => {
       const panel = findPanel();
+      // 圆钮与面板同批创建，挂行之前先把拖动吸附装上（与面板在不在无关）。
+      try { setupKnobs(); } catch { /* 拖不动也不影响面板 */ }
       if (!panel) return false;
 
       // 「背景画面」插到面板最前（挨着原生滑块），「背景音乐」挂到最后。

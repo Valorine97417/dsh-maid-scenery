@@ -78,6 +78,12 @@ check('融合层 script 不替 raw-html 写可信开关（用户的选择说了�
 check('融合层 script 按 id 找面板（不带 class）', /#dsvs-knobs/.test(table[3]?.text ?? ''));
 check('融合层 script 用面板自带 preset 类', /dsvs-knobs-preset/.test(table[3]?.text ?? ''));
 
+// 圆钮拖动吸附（行为测试在 scripts/drag-smoke.mjs，那里真跑一遍 pointer 事件）
+check('融合层 script 装了圆钮拖动', /dsvs-knobs-pill/.test(table[3]?.text ?? '') && /pointerdown/.test(table[3]?.text ?? ''));
+check('拖动位置持久化（换页面还在原处）', /dsh-maid-scenery-knobs/.test(table[3]?.text ?? ''));
+check('拖动只吞掉自己尾巴那一次 click（不接管 vendor 的开合）', /stopImmediatePropagation/.test(table[3]?.text ?? ''));
+check('融合层 css 给可拖圆钮开了 touch-action:none', /#dsvs-knobs-pill\[data-scenery-drag="1"\][^{]*\{[^}]*touch-action:\s*none/.test(css));
+
 // ---- 整合层：vendor 产物在位 ----
 const vsFiles = [
   'vendor/video-skin/index.host.js',

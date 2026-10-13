@@ -75,6 +75,23 @@ body[data-maid-scenery="video"] [data-skin-chrome="character-stage"] {
   outline-offset: 1px;
 }
 
+/* ── F. 圆钮可拖（拖动吸附见 scenery.js） ──
+ *
+ * touch-action:none 是触摸屏上能拖的前提：否则 pointermove 会被页面滚动抢走，
+ * 手指一动就变成滚聊天记录。只在脚本给圆钮挂上标记后生效 —— 脚本没跑起来时
+ * 圆钮维持原生行为（右下角、点开面板）。
+ *
+ * 下面那条 max-height 是拖动吸附的配套：圆钮拖到屏幕上半段时面板会翻到它下方，
+ * 贴边时给自己留出滚动余地，不把内容切在视口外。 */
+#dsvs-knobs-pill[data-scenery-drag="1"] {
+  touch-action: none;
+}
+
+#dsvs-knobs {
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
 /* ── E. 亮色过亮：把纯白表面换回工坊的冷调瓷玻璃 ──
  *
  * 冲突现场：dsh-video-skin 的 `html[data-dsvs="on"] body`（特异性 0,1,2，带
