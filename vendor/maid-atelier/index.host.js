@@ -87,7 +87,9 @@ var manifest_default = [
 //#region src/index.ts
 /** Serve only this package's immutable presentation assets while the skin is enabled. */
 function apply(ctx) {
-	installSkinAssets(ctx, "maid-atelier", new URL("../assets/runtime/", import.meta.url), manifest_default);
+	// 整合改动（dsh-maid-scenery v0.2.1）：上游此文件在 lib/index.js，`../assets/` 指向包根；
+	// 本包把它放在 vendor/maid-atelier/ 根下，少了一层，故改为 `./assets/`。
+	installSkinAssets(ctx, "maid-atelier", new URL("./assets/runtime/", import.meta.url), manifest_default);
 }
 //#endregion
 export { apply };

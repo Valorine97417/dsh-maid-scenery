@@ -130,6 +130,30 @@ check('路由注册总数 7', registrations.length === 7, `got ${registrations.l
 check('两层各留一个 disposer（可卸载）', disposers.length === 2, `got ${disposers.length}`);
 check('disposer 全是函数', disposers.every((d) => typeof d === 'function'));
 
+// 素材路由要真能取到文件 —— 只断言 manifest 与磁盘对得上不够：
+// v0.2.0 曾因 vendor 后相对层级少一层（../assets → ./assets）导致满屏 404，冒烟全绿却没抓到。
+const assetRoute = registrations.find((r) => r.kind === 'prefix' && r.path === '/skin-assets/maid-atelier');
+const fakeRes = () => {
+  const out = { status: 0, headers: null, body: null };
+  return {
+    _out: out,
+    writeHead(code, headers) { out.status = code; out.headers = headers ?? null; return this; },
+    end(body) { out.body = body; return this; },
+  };
+};
+const probe = async (urlPath, method = 'GET', headers = {}) => {
+  const res = fakeRes();
+  await assetRoute.handler({ method, url: urlPath, headers }, res);
+  return { status: res._out.status, len: res._out.body?.length ?? 0, headers: res._out.headers ?? {} };
+};
+const hit = await probe(`/skin-assets/maid-atelier/${files[0]}`);
+check('素材路由真能取到文件（200 且有字节）', hit.status === 200 && hit.len > 0, JSON.stringify(hit));
+check('素材响应带 immutable 缓存头与 nosniff', /immutable/.test(hit.headers['Cache-Control'] ?? '') && hit.headers['X-Content-Type-Options'] === 'nosniff', JSON.stringify(hit.headers));
+const miss = await probe(`/skin-assets/maid-atelier/${'0'.repeat(64)}.png`);
+check('白名单外的素材名返回 404', miss.status === 404, JSON.stringify(miss));
+const badMethod = await probe(`/skin-assets/maid-atelier/${files[0]}`, 'POST');
+check('非 GET/HEAD 返回 405', badMethod.status === 405, JSON.stringify(badMethod));
+
 // ---- 客户端半边 ----
 const client = readFileSync(url('../client.js'), 'utf8');
 check('client 以 scenery 自身 id 注册', /__ModuleLoader__\.load\(\{\s*id:\s*['"]dsh-maid-scenery['"]/.test(client));
