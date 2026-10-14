@@ -147,11 +147,13 @@ check(
 
 // 本地有音频时，配置指向它必须解析成功：music 出路 + 播放列表非空 + 零 warning。
 // 这条正是"音乐被整合漏掉"的回归守卫——磁盘上放着歌却解析不出来，页面就是静音。
+// 0.2.2 起歌的正本在 $DSH_HOME/dsh-maid-scenery/music/（冒烟里就是 .smoke-home 那份），
+// 包内 assets 只是镜像——按正本判断，才和用户真正丢歌的地方是一处。
 const audioOnDisk = (() => {
-  try { return readdirSync(root('vendor/video-skin/assets')).filter((f) => AUDIO_RE.test(f)); } catch { return []; }
+  try { return readdirSync(root('.smoke-home/dsh-maid-scenery/music')).filter((f) => AUDIO_RE.test(f)); } catch { return []; }
 })();
 if (audioOnDisk.length === 0) {
-  console.log('SKIP  本地无音频 → 音乐解析用例跳过（放一首进 vendor/video-skin/assets/ 即生效）');
+  console.log('SKIP  本地无音频 → 音乐解析用例跳过（放一首进 $DSH_HOME/dsh-maid-scenery/music/ 即生效）');
 } else {
   const { loadConfig } = await import('../vendor/video-skin/lib/config.js');
   const { BOOT_ROUTE, BACKGROUND_ROUTE, MUSIC_ROUTE, TRACKS_ROUTE, CONFIG_ROUTE, OVERRIDE_ROUTE } =
@@ -168,7 +170,7 @@ if (audioOnDisk.length === 0) {
   const cfg = loadConfig({
     packageRoot: fileURLToPath(root('vendor/video-skin/')),
     homeDir: tmpHome,
-    version: '0.2.1',
+    version: '0.2.2',
     routes: {
       boot: BOOT_ROUTE, background: BACKGROUND_ROUTE, music: MUSIC_ROUTE,
       tracks: TRACKS_ROUTE, config: CONFIG_ROUTE, override: OVERRIDE_ROUTE,
@@ -248,10 +250,45 @@ const callRoute = async (route, method = 'GET') => {
 if (musicInfo && musicOpen) {
   const info = await callRoute(musicInfo);
   check('音乐信息端点返回曲目数与列表', info.status === 200 && typeof info.body?.count === 'number' && Array.isArray(info.body?.tracks), JSON.stringify(info));
-  check('音乐信息端点报的目录落在包内 vendor/assets', /vendor[\\/]video-skin[\\/]assets$/.test(info.body?.dir ?? ''), info.body?.dir);
+  check('音乐信息端点报的目录就是音乐正本目录', /dsh-maid-scenery[\\/]music$/.test(info.body?.dir ?? ''), info.body?.dir);
   check('曲目数与 tracks 长度一致', info.body?.count === info.body?.tracks?.length, JSON.stringify(info.body));
   const openGet = await callRoute(musicOpen, 'GET');
   check('打开音乐目录只认 POST（GET 返回 405）', openGet.status === 405, JSON.stringify(openGet));
+}
+
+// ---- 音乐库：正本在 DSH_HOME，包内只是镜像（0.2.2）----
+// 假包根 + 假 home 单跑一遍同步，三条规则各验一次：收养（包内遗留 → 正本）、
+// 镜像（正本 → 包内）、清理（正本删了 → 包内旧镜像也删），外加"只补空缺"的自动填曲。
+{
+  const { syncMusicLibrary, ensureAutoMusic, resolveHomeDir } = await import('../lib/music.js');
+  const fakeHome = fileURLToPath(root('.smoke-music/home/'));
+  const fakePkg = fileURLToPath(root('.smoke-music/pkg/'));
+  const fakeAssets = `${fakePkg}vendor/video-skin/assets/`;
+  const homeMusic = `${fakeHome}dsh-maid-scenery/music/`;
+  mkdirSync(fakeAssets, { recursive: true });
+  writeFileSync(`${fakeAssets}legacy.mp3`, Buffer.alloc(16, 7));
+  const first = syncMusicLibrary({ homeDir: fakeHome, packageRoot: fakePkg });
+  check('音乐库：包内遗留音频被收养进正本', first.adopted.includes('legacy.mp3') && statSync(`${homeMusic}legacy.mp3`).size === 16, JSON.stringify(first.adopted));
+  check('音乐库：回报正本曲目（按文件名排序）', first.tracks.join() === 'legacy.mp3', first.tracks.join());
+  check('音乐库：镜像名单落在数据目录', statSync(`${fakeHome}dsh-maid-scenery/music-mirror.json`).size > 0);
+
+  writeFileSync(`${homeMusic}new.mp3`, Buffer.alloc(24, 9));
+  const second = syncMusicLibrary({ homeDir: fakeHome, packageRoot: fakePkg });
+  check('音乐库：正本新增的歌镜像进包内', second.mirrored.includes('new.mp3') && statSync(`${fakeAssets}new.mp3`).size === 24, JSON.stringify(second.mirrored));
+  rmSync(`${homeMusic}legacy.mp3`, { force: true });
+  const third = syncMusicLibrary({ homeDir: fakeHome, packageRoot: fakePkg });
+  check('音乐库：正本删掉的歌，包内旧镜像一并清掉', third.removed.includes('legacy.mp3') && statSync(`${fakeAssets}legacy.mp3`, { throwIfNoEntry: false }) === undefined, JSON.stringify(third.removed));
+
+  const auto = ensureAutoMusic({ homeDir: fakeHome, tracks: third.tracks });
+  const written = JSON.parse(readFileSync(`${fakeHome}dsh-video-skin.json`, 'utf8'));
+  check('自动填曲：字段缺席时补上正本第一首', auto.changed === true && written.background?.music === 'assets/new.mp3', JSON.stringify(written));
+  const again = ensureAutoMusic({ homeDir: fakeHome, tracks: third.tracks });
+  check('自动填曲：字段已在场就不再动它', again.changed === false && again.music === 'assets/new.mp3', JSON.stringify(again));
+  writeFileSync(`${fakeHome}dsh-video-skin.json`, JSON.stringify({ background: { music: '', veil: 0.2 } }), 'utf8');
+  const muted = ensureAutoMusic({ homeDir: fakeHome, tracks: third.tracks });
+  check('自动填曲：用户写空串＝要静音，照样不碰', muted.changed === false && JSON.parse(readFileSync(`${fakeHome}dsh-video-skin.json`, 'utf8')).background.music === '', JSON.stringify(muted));
+  check('音乐库：DSH_HOME 由环境变量解析成绝对路径', resolveHomeDir({ DSH_HOME: fakeHome }) === fakeHome.replace(/[\\/]+$/, ''), resolveHomeDir({ DSH_HOME: fakeHome }));
+  rmSync(fileURLToPath(root('.smoke-music/')), { recursive: true, force: true });
 }
 
 // ---- 客户端半边 ----
@@ -281,7 +318,7 @@ const baseline = {
 };
 for (const [key, value] of Object.entries(baseline)) {
   check(`出厂基线 ${key} = ${value}`,
-    new RegExp(`\\b${key}:\\s*${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[,\\n]`).test(defaultsBlock));
+    new RegExp(`\\b${key}:\\s*${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:,|\\r?\\n)`).test(defaultsBlock));
 }
 check('设置页的 defaultValue 一律取自 SKIN_DEFAULTS（不留裸字面量）',
   (client.match(/defaultValue: SKIN_DEFAULTS\./g) ?? []).length === Object.keys(baseline).length &&
@@ -314,7 +351,7 @@ check('skin.json.desktopIcon 在包里且是 .ico', size(skin.desktopIcon) > 0 &
 check('skin.json 里没有绝对路径（皮肤管理器会拒）', ![skin.preview?.light, skin.preview?.dark, skin.desktopIcon].some((p) => /^[a-zA-Z]:|^\//.test(p ?? '')));
 
 // ---- 包元信息 ----
-check('版本 0.2.1', pkg.version === '0.2.1', pkg.version);
+check('版本 0.2.2', pkg.version === '0.2.2', pkg.version);
 check('files 含 vendor 与 client.js', pkg.files.includes('vendor') && pkg.files.includes('client.js'));
 check('files 含 skin.json', pkg.files.includes('skin.json'));
 check('exports 暴露 ./client', pkg.exports['./client'] === './client.js');

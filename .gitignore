@@ -2,6 +2,7 @@ node_modules/
 *.log
 .DS_Store
 .smoke-home/
+.smoke-music/
 
 # 本地私有背景音乐：上游视频皮肤 assets/ 只有 boot.mp4 与 background.mp4，
 # 音频由使用者自备（C418 等商业版权曲目不入库，避免再分发）。

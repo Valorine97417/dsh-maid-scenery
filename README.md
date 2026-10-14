@@ -29,6 +29,7 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
 | 目录 | 是什么 | 上游 |
 | --- | --- | --- |
 | `index.js` / `client.js` / `runtime/` | 融合层本体（本仓库自有代码，MIT） | — |
+| `lib/music.js` | 音乐库：正本目录、镜像同步、自动填曲（本仓库自有代码，MIT） | — |
 | `skin.json` | 皮肤清单：让「皮肤管理」面板认得出本包内置的主题 | — |
 | `vendor/video-skin/` | 视频层：开机动画、聊天背景视频、「聊天背景」面板与路由 | dsh-video-skin v0.1.1（MIT） |
 | `vendor/maid-atelier/` | 主题层：静态工坊画、蕾丝、Q 版侧栏、31 个哈希素材 | maid-atelier v0.1.7（代码 MIT / 美术 CC BY-NC-SA 4.0） |
@@ -37,11 +38,41 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
 
 **装过旧版配套的要先卸掉**：如果 profile 里还装着 `@smalltailqwq/dsh-client-ui-skin-maid-atelier` 或 `dsh-video-skin`，请先 `dsh plugin --profile desktop remove` 掉——两套同样的东西同时在场会重复注入、互相打架（`skin.json` 的 `id` 与 `wiring.id` 两版相同）。
 
+## 怎么认出「重复的视频层」
+
+上面那条「要先卸掉」不是客套话：两套视频层同时在场时，**症状是安静的**。两边都往 `webServer` 注册同一批 `/dsh-video-skin/*` 路由，先注册的赢下整批，后注册的那批次次撞名抛错——而本包把路由注册包在 `try/catch` 里（装饰品不该让页面变红），失败只落一行 warning，于是页面上看起来"就是少了点什么"：面板里少一行「音乐音量」滑块、播放键报「无可播音乐」、静态素材 404 而背景照旧。**2026-10-14 本机就踩过一次**：profile 里残留的独立 `dsh-video-skin@0.1.1` 赢了路由，把本包内置视频层的路由整批挤掉。
+
+三步就能认出来（`127.0.0.1:19387` 换成实际宿主地址；**路由免鉴权**，鉴权只卡根页面）：
+
+```bash
+# ① 装了本包（0.2.x）却回 0.1.1，就是独立包在应答
+curl -s http://127.0.0.1:19387/dsh-video-skin/config.json | grep -o '"version":"[^"]*"'
+# ② 音乐版独有路由：404 = 本包内置视频层的路由没挂上
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:19387/dsh-video-skin/tracks/x
+# ③ profile 里查残留（三处都要干净）
+cd "$DSH_HOME/profiles/desktop" && grep -n 'dsh-video-skin' package.json cordis.patch.yml pnpm-lock.yaml
+```
+
+处置二选一：
+
+- **彻底**：`dsh plugin --profile desktop remove dsh-video-skin`，重启 DSH（要联网）；
+- **只按停**：在 `$DSH_HOME/profiles/desktop/cordis.patch.yml` 末尾加一条 `- id: dsh-video-skin` / `name: dsh-video-skin` / `disabled: true`，重启生效——补丁层在 bundle 层之后，包体留在盘上，删掉这三行即可退回。
+
+同一套判据也适用于别的同类插件（比如 `@smalltailqwq/dsh-client-ui-skin-maid-atelier` 与本包内置主题共用 `/skin-assets/maid-atelier` 前缀）。顺带一提：探路由这个手法本身就好用——`/dsh-*/…` 这些插件端点不校验会话，根页面才要 token。
+
 ## 背景音乐（自备，不入库）
 
 视频背景的画面与声音是分开的：`background.mp4` 本身静音，音乐由一条独立的 `<audio>` 循环播放。上游 `assets/` 只带 `boot.mp4` 与 `background.mp4`——**音频由使用者自备**。C418 这类商业版权曲目不进仓库（`.gitignore` 已按扩展名把包内音频挡在 git 索引之外）：本地放着听没问题，**跟着包推上去才是再分发**。
 
-放一首进 `vendor/video-skin/assets/`，再让 `$DSH_HOME/dsh-video-skin.json` 指过去，刷新页面即生效（配置每次请求重读，不必重启 DSH）：
+**歌放这里**（0.2.2 起）：
+
+```
+$DSH_HOME/dsh-maid-scenery/music/
+```
+
+面板右下角圆钮 → 「打开音乐位置」就落到这个目录（不在会先建出来）。丢进去、刷新页面就有声音。
+
+**一首都不用配**：`$DSH_HOME/dsh-video-skin.json` 的 `background.music` 字段缺席时，本包自动填上目录里第一首；**字段一旦在场就一个字都不改**（写 `""` 就是明确要静音）。只有想指定「从哪首开始」时才需要自己写：
 
 ```json
 {
@@ -52,14 +83,16 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
 }
 ```
 
-- `music` 写空字符串 = 不开音乐；文件不在盘上只让这一项降级（日志一条 warning），别的功能照旧。
-- **`assets/` 下的音频会自动组成播放列表**（`music` 指的那首排头，其余按文件名跟随），一首放完自动下一首、到尾回卷——丢几首进去就是一张循环歌单。
+**为什么正本放 `$DSH_HOME`**：`vendor/` 活在 `node_modules` 里，插件一升级、一重装整包就被换掉——歌丢在那儿，一次更新就没了。现在每次启动同步一遍：包内遗留的音频先「收养」进正本，再把正本每首镜像回包内 `vendor/video-skin/assets/`（同卷走硬链接，零额外空间；跨卷退回复制），正本里删掉的歌，包内旧镜像一并清掉——**一切以正本目录为准**，逻辑全在 `lib/music.js`。
+
+- 文件不在盘上只让这一项降级（日志一条 warning），别的功能照旧。
+- **正本目录下的音频会自动组成播放列表**（`music` 指的那首排头，其余按文件名跟随），一首放完自动下一首、到尾回卷——丢几首进去就是一张循环歌单。
 - 音量既能写 `musicVolume`，也能用右下角面板的滑块调（默认 `0.25`，垫底氛围，不压聊天）。
 - 桌面版（Electron）允许未静音自动播放，刷新即有声音；浏览器形态（`dsh web`）可能拦下自动播放，那时静音降级，不扣住用户。
-- **面板里有这一行**：聊天背景面板（右下角圆钮）底部多了「背景音乐」——左边直接报目录里有几首（「目录为空」就是还没放歌），右侧两个按钮：
+- **面板里有这一行**：聊天背景面板（右下角圆钮）底部多了「背景音乐」——左边直接报正本目录里有几首（「目录为空」就是还没放歌），右侧两个按钮：
   - 「播放 / 暂停」起停那条 `<audio>`。自动播放被策略拦下时，这一次点击就是那个"用户手势"，音乐能靠它回来；
-  - 「打开音乐位置」拉起系统文件管理器（资源管理器 / Finder / xdg-open）直接落到 `assets/` 目录，目录不存在会先建出来。
-  两个端点由本包宿主半边提供：`/dsh-maid-scenery/music.json`（报目录与曲目清单）、`/dsh-maid-scenery/open-music-folder`（只认 POST，免得页面一加载就被预取弹窗）。
+  - 「打开音乐位置」拉起系统文件管理器（资源管理器 / Finder / xdg-open）直接落到正本目录，目录不存在会先建出来。
+  两个端点由本包宿主半边提供：`/dsh-maid-scenery/music.json`（报正本目录与曲目清单）、`/dsh-maid-scenery/open-music-folder`（只认 POST，免得页面一加载就被预取弹窗）。
 
 ## 面板圆钮可以拖
 
@@ -91,6 +124,14 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
 - 两家的 `apply` 各自包 `try`——一家挂了不拖死另一家，融合层的切换行照旧可用。
 
 ## 变更
+
+### 0.2.2
+
+- **音乐正本搬进 `$DSH_HOME/dsh-maid-scenery/music/`**：包内 `vendor/video-skin/assets/` 降级成镜像（同卷走硬链接，跨卷退回复制），插件升级、重装不再把歌弄丢。每次启动同步一遍——收养包内遗留音频 → 按正本镜像 → 清掉正本已删的旧镜像；全部逻辑在 `lib/music.js`。
+- **「丢进目录就能播」**：`dsh-video-skin.json` 的 `background.music` 字段缺席时自动填上目录第一首；字段在场（含空串＝静音）一个字都不改。
+- **面板「打开音乐位置」与 `music.json` 报的都是正本目录**（以前指包内 `assets/`，那正是重装会丢的那一处）。
+- **README 补「怎么认出重复的视频层」一节**：两个同类插件同时在场时症状是安静的（少一行滑块、独有路由 404、config 回旧版本号），这一节给可照做的三步核对与两种处置（彻底 remove / patch 里只按停），顺带记下"插件端点免鉴权、根页面才要 token"这个探路手法。
+- 冒烟从 103 条增到 114 条：新增音乐库九条（收养 / 镜像 / 清理 / 自动填曲三条边界 / DSH_HOME 解析），并修掉一条在 CRLF 下永远失败的基线断言（`workspaceRowHeight` 是本段最后一项、后面跟的是换行，旧断言只认逗号）。
 
 ### 0.2.1
 

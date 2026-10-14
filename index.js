@@ -10,6 +10,8 @@
  *   - `/dsh-maid-scenery/music.json`：报出音乐目录与目录里的曲目数；
  *   - `/dsh-maid-scenery/open-music-folder`：用系统文件管理器打开那个目录（只认 POST）。
  * 音频本身由使用者自备（不进 git 索引，见 README「背景音乐（自备，不入库）」）。
+ * 0.2.2 起这个目录是 `$DSH_HOME/dsh-maid-scenery/music/`（歌的正本，重装不丢），
+ * 包内 `vendor/video-skin/assets/` 降级成镜像——同步逻辑全在 lib/music.js。
  *
  * 契约全部抄 dsh-video-skin 踩过的坑（见 vendor/video-skin/index.host.js 头注释）：
  *   - `inject` 空数组、apply 同步注册订阅：桌面壳的注入表在宿主启动时收集一次，
@@ -34,26 +36,21 @@ import { fileURLToPath } from 'node:url'
 
 import { apply as applyVideoSkin } from './vendor/video-skin/index.host.js'
 import { apply as applyMaidAtelier } from './vendor/maid-atelier/index.host.js'
+import {
+  ensureAutoMusic,
+  listAudioFiles,
+  musicHomeDir,
+  resolveHomeDir,
+  syncMusicLibrary,
+} from './lib/music.js'
 
 export const name = 'maid-scenery'
 export const inject = []
 
 const RUNTIME_DIR = 'runtime'
 
-/** 音乐目录（相对包根）：与视频层扫描的那一个目录完全同一处。 */
-const MUSIC_DIR = path.join('vendor', 'video-skin', 'assets')
-
-/** 视频层认的音频扩展名（与 vendor/video-skin/lib/config.js 的白名单一致）。 */
-const AUDIO_EXTENSIONS = Object.freeze([
-  '.mp3',
-  '.ogg',
-  '.oga',
-  '.opus',
-  '.m4a',
-  '.aac',
-  '.flac',
-  '.wav',
-])
+/** 包内素材目录（相对包根）：视频层扫的就是这一处，音乐正本的镜像也落在这里。 */
+const ASSETS_DIR = path.join('vendor', 'video-skin', 'assets')
 
 /** 面板「背景音乐」行用的两个端点。 */
 const MUSIC_INFO_ROUTE = '/dsh-maid-scenery/music.json'
@@ -61,26 +58,6 @@ const MUSIC_OPEN_ROUTE = '/dsh-maid-scenery/open-music-folder'
 
 function describe(error) {
   return error instanceof Error ? error.message : String(error)
-}
-
-/**
- * 列出目录里的音频（按文件名排序，与视频层的歌单顺序一致）。
- * @param {string} dir 绝对路径。
- * @returns {string[]} 文件名列表；目录不在或读不动就是空数组。
- */
-function listTracks(dir) {
-  try {
-    return fs
-      .readdirSync(dir, { withFileTypes: true })
-      .filter(
-        (entry) =>
-          entry.isFile() && AUDIO_EXTENSIONS.includes(path.extname(entry.name).toLowerCase()),
-      )
-      .map((entry) => entry.name)
-      .sort((a, b) => a.localeCompare(b))
-  } catch {
-    return []
-  }
 }
 
 /**
@@ -152,8 +129,29 @@ export function apply(ctx) {
     warn(`主题层装配失败，静态画素材将 404（视频层不受影响）：${describe(error)}`)
   }
 
-  // ── ④ 音乐面板端点：面板「背景音乐」行按它走动 ──
-  const musicDir = path.join(packageRoot, MUSIC_DIR)
+  // ── ④ 音乐库：正本在 DSH_HOME，包内目录只是镜像（见 lib/music.js 头注释） ──
+  // 先同步、再注册端点：这样"用户丢歌的目录""视频层扫的目录""面板报的目录"三方是同一处。
+  const homeDir = resolveHomeDir()
+  let musicDir = path.join(packageRoot, ASSETS_DIR)
+  if (homeDir === undefined) {
+    warn('问不到 DSH_HOME，音乐库退回包内目录（重装会丢歌）')
+  } else {
+    musicDir = musicHomeDir(homeDir)
+    try {
+      const library = syncMusicLibrary({ homeDir, packageRoot, warn })
+      if (library.adopted.length > 0) {
+        warn(`从包内收编 ${library.adopted.length} 首歌进音乐目录：${library.adopted.join('、')}`)
+      }
+      if (library.removed.length > 0) {
+        warn(`清掉 ${library.removed.length} 个已从音乐目录删掉的旧镜像：${library.removed.join('、')}`)
+      }
+      const auto = ensureAutoMusic({ homeDir, tracks: library.tracks, warn })
+      if (auto.changed) warn(`背景音乐没配过，已自动指向目录第一首：${auto.music}`)
+    } catch (error) {
+      warn(`音乐库同步失败，继续用包内目录：${describe(error)}`)
+    }
+  }
+
   try {
     ctx.inject(['webServer'], (child) => {
       child.effect(() => {
@@ -177,7 +175,7 @@ export function apply(ctx) {
             path: MUSIC_INFO_ROUTE,
             handler: (req, res) => {
               try {
-                const tracks = listTracks(musicDir)
+                const tracks = listAudioFiles(musicDir)
                 json(res, 200, { dir: musicDir, count: tracks.length, tracks })
               } catch (error) {
                 json(res, 500, { dir: musicDir, error: describe(error) })
