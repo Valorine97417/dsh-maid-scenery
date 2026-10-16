@@ -351,7 +351,8 @@ check('skin.json.desktopIcon 在包里且是 .ico', size(skin.desktopIcon) > 0 &
 check('skin.json 里没有绝对路径（皮肤管理器会拒）', ![skin.preview?.light, skin.preview?.dark, skin.desktopIcon].some((p) => /^[a-zA-Z]:|^\//.test(p ?? '')));
 
 // ---- 包元信息 ----
-check('版本 0.2.2', pkg.version === '0.2.2', pkg.version);
+// 版本断言只查三段式形态，不写死数字——每次 bump 版本还得改冒烟太蠢（0.2.3 撞过一次）。
+check('版本号是三段式 x.y.z', /^\d+\.\d+\.\d+$/.test(pkg.version), pkg.version);
 check('files 含 vendor 与 client.js', pkg.files.includes('vendor') && pkg.files.includes('client.js'));
 check('files 含 skin.json', pkg.files.includes('skin.json'));
 check('exports 暴露 ./client', pkg.exports['./client'] === './client.js');
