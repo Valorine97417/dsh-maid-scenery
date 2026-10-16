@@ -1,6 +1,7 @@
 {
   "name": "dsh-maid-scenery",
   "description": "DSH 小困插件 · 深海女仆工坊：视频背景、静态画主题、融合切换三合一，附可拖拽吸附的聊天背景面板。装一个包，配套全在包里，卸载其它插件也不影响。",
+  "icon": "assets/plugin-icon.png",
   "version": "0.2.2",
   "type": "module",
   "main": "index.js",
@@ -27,8 +28,9 @@
     "LICENSE",
     "LICENSE-ARTWORK",
     "NOTICE",
-    "LICENSE-upstream"
-  ],
+    "LICENSE-upstream",
+      "assets/plugin-icon.png"
+    ],
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
