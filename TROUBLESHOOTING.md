@@ -131,7 +131,7 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
   ```bash
   node scripts/upstream-sync.mjs check           # 看两家上游有没有新版本（git ls-remote，须带 -c http.proxy）
   node scripts/upstream-sync.mjs init            # 首次建 manifest 白名单（一般不用重跑）
-  node scripts/upstream-sync.mjs sync <target>   # 拉新：--target maid-atelier / video-skin
+  node scripts/upstream-sync.mjs sync <target>   # 拉新：target = maid-atelier / video-skin（位置参数）
   ```
 - **机制**：manifest 白名单映射（video-skin 9 文件、maid-atelier 58 文件；重命名 `index.js→index.host.js`、`lib/client.js→client.js`、`lib/index.js→index.host.js`；`LICENSE-upstream` 与 `*.flac` 挡在 protect 外）；用 git blob sha1 增量，本地已一致的文件跳过不下载。
 - **相关提交**：本条随 0.2.3 上线。
@@ -160,7 +160,7 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
 - **症状**：`node scripts/upstream-sync.mjs check` 卡住不动，报 `Failed to connect to github.com port 443 after 21069 ms: Couldn't connect to server`。
 - **原因**：git 不带 `-c http.proxy` 走直连，本机网络下 github.com:443 直连不通（curl 同族问题也见过 exit 35）。
 - **解法**：脚本已内置（`PROXY = 7890`，可用 `HTTPS_PROXY` 环境变量覆盖）——`git ls-remote` 与 raw.githubusercontent.com 请求都走 `http://127.0.0.1:7890`。**自己写脚本时别忘这条**。
-- **验证方式**：`git -c http.proxy=http://127.0.0.1:7890 ls-remote https://github.com/Small-tailqwq/dsh-maid-atelier.git HEAD` 秒回。
+- **验证方式**：`git -c http.proxy=http://127.0.0.1:7890 ls-remote https://github.com/Small-tailqwq/dsh-deep-whale.git HEAD` 秒回。
 - **相关提交**：本条随 0.2.3 上线。
 
 ---

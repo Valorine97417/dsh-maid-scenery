@@ -105,7 +105,7 @@ $DSH_HOME/dsh-maid-scenery/music/
 - **活动范围是对话框，不是整个窗口**：横向以中间列（`[class*='centerCol']`）的左右缘为界、纵向以它的上下缘为界，拖动时内缩 4px、吸边时内缩 16px；侧边栏展开/收起、窗口改尺寸都会重新量一遍，圆钮跟着对话框挪。哪天选择器认不出来（页面 class 改名），才退回整个视口，不至于拖不动。
 - 只改圆钮与面板的定位样式，**不碰 vendor**：点击开合、透明度滑块、音乐音量那一整套仍归视频皮肤自己。
 
-想知道拖得对不对，别靠眼看：`node scripts/drag-smoke.mjs` 会把 `runtime/scenery.js` 真拉进一个迷你 DOM 里跑，喂一串 `pointerdown / move / up`，断言跟手、吸边、夹回对话框、位置记忆与点击吞噬（19 条）。
+想知道拖得对不对，别靠眼看：`node scripts/drag-smoke.mjs` 会把 `runtime/scenery.js` 真拉进一个迷你 DOM 里跑，喂一串 `pointerdown / move / up`，断言跟手、吸边、夹回对话框、位置记忆与点击吞噬（20 条）。
 
 **皮肤管理器怎么还认得出**：皮肤管理器（`@smalltailqwq/dsh-client-ui-skin-deep-whale-manager`）只从 profile 的依赖里找带 `skin.json` 的包，且要求清单里的 `package` 字段等于已装包名。整合后 maid-atelier 不再是独立依赖，所以本包**在包根自曝一份 `skin.json`**：`id` 仍写 `maid-atelier`（换源时「先卸旧主题」的规则不变），`package` 改成本包名，`wiring.id` 对齐本包自己的 patch entry `maid-scenery`，`preview` 与 `desktopIcon` 指到 `vendor/maid-atelier/` 下。于是面板里照旧显示「深海女仆工坊」与它的定制控件。
 
