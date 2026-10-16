@@ -3,7 +3,7 @@
 > 用途：换新设备（或重装 DSH）时按这份记录避坑。每条按「症状 → 原因 → 解法 → 验证方式」写，症状尽量照抄实际看到的现象／报错。
 > 素材来源：仓内 README／源码注释／git 提交记录、记忆库（项目 `dsh-maid-scenery`）、本机实测（2026-10-16）。
 > 只写有据可查的条目；证据不足的标「（待核）」。
-> 最后更新 2026-10-16 ｜ 对应版本 v0.2.2
+> 最后更新 2026-10-16 ｜ 对应版本 v0.2.3
 
 ---
 
@@ -123,6 +123,45 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
 - **验证方式**：`cat "$DSH_HOME/dsh-video-skin.json"` 看 `background.musicVolume`。
 - **补充**：`background.music` **字段缺席**时本包自动填目录第一首；**字段一旦在场一个字都不改**（写 `""` ＝明确要静音）。
 - **相关提交**：`f05885c`、`f3e652e`。
+
+### 2.7 跟上游：`upstream-sync` 一键拉新（0.2.3 起）
+
+- **背景**：两家 vendor 的原作者都没停更（maid-atelier 与 dsh-video-skin 都在发新版），本包需要对上游保持跟进能力。**不接管上游、不 fork**，对上游零修改内置，跟进靠 `scripts/upstream-sync.mjs`。
+- **用法**（三条子命令）：
+  ```bash
+  node scripts/upstream-sync.mjs check           # 看两家上游有没有新版本（git ls-remote，须带 -c http.proxy）
+  node scripts/upstream-sync.mjs init            # 首次建 manifest 白名单（一般不用重跑）
+  node scripts/upstream-sync.mjs sync <target>   # 拉新：--target maid-atelier / video-skin
+  ```
+- **机制**：manifest 白名单映射（video-skin 9 文件、maid-atelier 58 文件；重命名 `index.js→index.host.js`、`lib/client.js→client.js`、`lib/index.js→index.host.js`；`LICENSE-upstream` 与 `*.flac` 挡在 protect 外）；用 git blob sha1 增量，本地已一致的文件跳过不下载。
+- **相关提交**：本条随 0.2.3 上线。
+
+### 2.8 sync 把本地整合调整冲掉了（素材路由 404）
+
+- **症状**：sync maid-atelier 后 `node scripts/smoke.mjs` 112 PASS / 2 FAIL——「素材路由真能取到文件」404、「素材响应带 immutable 缓存头」失败；页面里静态画全 404。
+- **原因**：上游 0.1.8 的 `lib/index.js` 用 `new URL("../assets/runtime/", import.meta.url)`（上游文件在 `lib/` 下，`..` 指包根）；vendor 拉平到根后必须 `./assets/runtime/`。scenery v0.2.1 手工调过一处（见 2.1），**sync 拉上游原文覆盖把它冲掉了**。
+- **解法**：manifest 加 `overrides` 段——per-file 的本地调整声明：
+  ```json
+  "maid-atelier": {
+    "overrides": [{
+      "v": "index.host.js",
+      "why": "整合改动（dsh-maid-scenery v0.2.1）：上游文件在 lib/ 下，../assets/ 指向包根；vendor 里放在根下少一层，须为 ./assets/。",
+      "replacements": [["installSkinAssets(ctx, \"maid-atelier\", new URL(\"../assets/runtime/\", import.meta.url), manifest_default);",
+                        "installSkinAssets(ctx, \"maid-atelier\", new URL(\"./assets/runtime/\", import.meta.url), manifest_default);"]]
+    }]
+  }
+  ```
+  sync 拉新后自动重放（split/join 全替换 + 命中数校验，不齐打 ⚠）；`applied[v]` 记录 override 后的 blob sha，skip 判定认它——**以后上游随便改，这条永不丢**。
+- **验证方式**：sync 重放后 smoke 恢复 114 PASS / 0 FAIL；再跑一次 sync 应「58 全 skip」（幂等）。
+- **相关提交**：本条随 0.2.3 上线。
+
+### 2.9 `git ls-remote` 直连挂死（upstream-sync 卡 21 秒超时）
+
+- **症状**：`node scripts/upstream-sync.mjs check` 卡住不动，报 `Failed to connect to github.com port 443 after 21069 ms: Couldn't connect to server`。
+- **原因**：git 不带 `-c http.proxy` 走直连，本机网络下 github.com:443 直连不通（curl 同族问题也见过 exit 35）。
+- **解法**：脚本已内置（`PROXY = 7890`，可用 `HTTPS_PROXY` 环境变量覆盖）——`git ls-remote` 与 raw.githubusercontent.com 请求都走 `http://127.0.0.1:7890`。**自己写脚本时别忘这条**。
+- **验证方式**：`git -c http.proxy=http://127.0.0.1:7890 ls-remote https://github.com/Small-tailqwq/dsh-maid-atelier.git HEAD` 秒回。
+- **相关提交**：本条随 0.2.3 上线。
 
 ---
 
@@ -311,6 +350,7 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
    ```
 5. **改渲染前先复验上游**：老大报的「侧边栏按钮消失」「输入框图片异常」很可能上游 0.1.7 已修——**换正源后先重启复验再决定要不要动融合层**，别急着写补丁。
 6. **测拖动别手测**：断言跟手、吸边、夹回对话框、位置记忆、点击吞噬、刷新瞬间不落位——`drag-smoke.mjs` 已经把这些场景都喂过一遍。
+7. **跟完上游必跑 smoke**：sync 后 `git diff --stat vendor/` 看上游改了什么，再 `node scripts/smoke.mjs` 自测融合层——素材 404 这类「同步引入」的问题当场现形（见 2.8）；别等上线后界面坏了才回头查。
 
 ---
 

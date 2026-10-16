@@ -125,6 +125,13 @@ $DSH_HOME/dsh-maid-scenery/music/
 
 ## 变更
 
+### 0.2.3
+
+- **上游跟进机制落地**：新增 `scripts/upstream-sync.mjs`（`check` / `init` / `sync` 三条子命令）与 `scripts/upstream-manifest.json` 白名单。两家 vendor 的原作者都在发新版，本包不接管不 fork、零修改内置，跟进靠一键拉新：git blob sha1 增量、重命名映射、protect 挡 `LICENSE-upstream` 与音频。**`overrides` 段**记 vendor 特有的本地调整（现一条：`index.host.js` 的 `../assets/runtime/`→`./assets/runtime/` 层级适配），sync 拉新后自动重放、幂等跳过——本地调整不会被上游更新冲掉。
+- **vendor maid-atelier 同步 0.1.7 → 0.1.8**：上游实改 `client.js`（169+/84-，客户端模块），素材、locale、manifest 未动（49 个文件 blob 相同跳过）。video-skin 上游仍 v0.1.1 无动作。
+- **TROUBLESHOOTING.md 新增三条**（2.7 跟上游 / 2.8 sync 冲掉本地调整 / 2.9 git ls-remote 直连挂死）——2.8 那条是首跑真踩出来的：sync 拉原文覆盖了 v0.2.1 的路径调整，smoke 当场 2 FAIL 抓回，顺带把 overrides 机制建了出来。
+- **网络**：脚本全走本机代理 7890（git ls-remote 带 `-c http.proxy`，raw 请求同理，可用 `HTTPS_PROXY` 覆盖）——本机直连 GitHub 挂死（`Failed to connect to github.com port 443 after 21069 ms`）。
+
 ### 0.2.2
 
 - **音乐正本搬进 `$DSH_HOME/dsh-maid-scenery/music/`**：包内 `vendor/video-skin/assets/` 降级成镜像（同卷走硬链接，跨卷退回复制），插件升级、重装不再把歌弄丢。每次启动同步一遍——收养包内遗留音频 → 按正本镜像 → 清掉正本已删的旧镜像；全部逻辑在 `lib/music.js`。

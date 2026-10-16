@@ -1,0 +1,302 @@
+{
+  "video-skin": {
+    "repo": "Something11235/dsh-video-skin",
+    "subdir": "",
+    "vendorDir": "vendor/video-skin",
+    "files": [
+      {
+        "v": "assets/background.mp4",
+        "u": "assets/background.mp4"
+      },
+      {
+        "v": "assets/boot.mp4",
+        "u": "assets/boot.mp4"
+      },
+      {
+        "v": "index.host.js",
+        "u": "index.js"
+      },
+      {
+        "v": "lib/config.js",
+        "u": "lib/config.js"
+      },
+      {
+        "v": "lib/injections.js",
+        "u": "lib/injections.js"
+      },
+      {
+        "v": "lib/route.js",
+        "u": "lib/route.js"
+      },
+      {
+        "v": "LICENSE",
+        "u": "LICENSE"
+      },
+      {
+        "v": "runtime/skin.css",
+        "u": "runtime/skin.css"
+      },
+      {
+        "v": "runtime/skin.js",
+        "u": "runtime/skin.js"
+      }
+    ]
+  },
+  "maid-atelier": {
+    "repo": "Small-tailqwq/dsh-deep-whale",
+    "subdir": "maid-atelier",
+    "vendorDir": "vendor/maid-atelier",
+    "files": [
+      {
+        "v": "assets/icons/delighted-192.png",
+        "u": "assets/icons/delighted-192.png"
+      },
+      {
+        "v": "assets/icons/delighted-32.png",
+        "u": "assets/icons/delighted-32.png"
+      },
+      {
+        "v": "assets/icons/delighted-512.png",
+        "u": "assets/icons/delighted-512.png"
+      },
+      {
+        "v": "assets/icons/delighted-cutout.png",
+        "u": "assets/icons/delighted-cutout.png"
+      },
+      {
+        "v": "assets/icons/delighted.ico",
+        "u": "assets/icons/delighted.ico"
+      },
+      {
+        "v": "assets/icons/determined-32.png",
+        "u": "assets/icons/determined-32.png"
+      },
+      {
+        "v": "assets/icons/determined-cutout.png",
+        "u": "assets/icons/determined-cutout.png"
+      },
+      {
+        "v": "assets/icons/determined.ico",
+        "u": "assets/icons/determined.ico"
+      },
+      {
+        "v": "assets/icons/preview.png",
+        "u": "assets/icons/preview.png"
+      },
+      {
+        "v": "assets/icons/README.md",
+        "u": "assets/icons/README.md"
+      },
+      {
+        "v": "assets/icons/sleepy-32.png",
+        "u": "assets/icons/sleepy-32.png"
+      },
+      {
+        "v": "assets/icons/sleepy-cutout.png",
+        "u": "assets/icons/sleepy-cutout.png"
+      },
+      {
+        "v": "assets/icons/sleepy.ico",
+        "u": "assets/icons/sleepy.ico"
+      },
+      {
+        "v": "assets/icons/source/delighted.png",
+        "u": "assets/icons/source/delighted.png"
+      },
+      {
+        "v": "assets/icons/source/determined.png",
+        "u": "assets/icons/source/determined.png"
+      },
+      {
+        "v": "assets/icons/source/sleepy.png",
+        "u": "assets/icons/source/sleepy.png"
+      },
+      {
+        "v": "assets/plugin-icon.png",
+        "u": "assets/plugin-icon.png"
+      },
+      {
+        "v": "assets/runtime/06eaf23edd8d5efcf8dfd2ff573307d92ad4422f4a5c022064e9659d34258b8d.png",
+        "u": "assets/runtime/06eaf23edd8d5efcf8dfd2ff573307d92ad4422f4a5c022064e9659d34258b8d.png"
+      },
+      {
+        "v": "assets/runtime/1183d4d3a2b122078d09b1d9c97e085696ae214694399f14ce407fc21d8f1ec1.webp",
+        "u": "assets/runtime/1183d4d3a2b122078d09b1d9c97e085696ae214694399f14ce407fc21d8f1ec1.webp"
+      },
+      {
+        "v": "assets/runtime/24f2fb04ce2d38574a3817f6d675b8c1ee5d9322588eec651271f67aabfcb48d.webp",
+        "u": "assets/runtime/24f2fb04ce2d38574a3817f6d675b8c1ee5d9322588eec651271f67aabfcb48d.webp"
+      },
+      {
+        "v": "assets/runtime/2789906568a926c4cf8c4a5639b1566e0eaf55ab947756839bdfd6a8d6354d92.png",
+        "u": "assets/runtime/2789906568a926c4cf8c4a5639b1566e0eaf55ab947756839bdfd6a8d6354d92.png"
+      },
+      {
+        "v": "assets/runtime/2818e5359596b13c5d64f5b1c5d4a9e0c05be477824779af8af37a0e10016b07.webp",
+        "u": "assets/runtime/2818e5359596b13c5d64f5b1c5d4a9e0c05be477824779af8af37a0e10016b07.webp"
+      },
+      {
+        "v": "assets/runtime/3135deb5d14d3ea44940edcf296ba2ffa14e242d5342a1a94618df0c57979482.webp",
+        "u": "assets/runtime/3135deb5d14d3ea44940edcf296ba2ffa14e242d5342a1a94618df0c57979482.webp"
+      },
+      {
+        "v": "assets/runtime/3d2b126caf0549c2e86684dcbc0ff4443b887e5e1684190710d2df7940466d98.webp",
+        "u": "assets/runtime/3d2b126caf0549c2e86684dcbc0ff4443b887e5e1684190710d2df7940466d98.webp"
+      },
+      {
+        "v": "assets/runtime/3d7e6d87938275bb735ecf980c2bbc3392893131e3b5aa594cf96f98cb00703e.webp",
+        "u": "assets/runtime/3d7e6d87938275bb735ecf980c2bbc3392893131e3b5aa594cf96f98cb00703e.webp"
+      },
+      {
+        "v": "assets/runtime/405917afdb68d725624bbf7e4f1619a35fc4004039b7d553c5528ca5f65308d3.webp",
+        "u": "assets/runtime/405917afdb68d725624bbf7e4f1619a35fc4004039b7d553c5528ca5f65308d3.webp"
+      },
+      {
+        "v": "assets/runtime/4386aee80ebaa41f926096ae9e0378b08dbd3eaaa2ad6646ff8f50a3f480a7a9.webp",
+        "u": "assets/runtime/4386aee80ebaa41f926096ae9e0378b08dbd3eaaa2ad6646ff8f50a3f480a7a9.webp"
+      },
+      {
+        "v": "assets/runtime/47072d2d652f09e857dbc8555ff5c1917c926ef5d4581641f7018b1607c42fda.webp",
+        "u": "assets/runtime/47072d2d652f09e857dbc8555ff5c1917c926ef5d4581641f7018b1607c42fda.webp"
+      },
+      {
+        "v": "assets/runtime/52e7dce6993e3f955c3fbb2875885e7ab60fb38ca89adb15d977c7a85d58c073.webp",
+        "u": "assets/runtime/52e7dce6993e3f955c3fbb2875885e7ab60fb38ca89adb15d977c7a85d58c073.webp"
+      },
+      {
+        "v": "assets/runtime/55f08096101b735ac656bcc4776dac8fb225f4b43bbc35b82aeda2cb33218355.webp",
+        "u": "assets/runtime/55f08096101b735ac656bcc4776dac8fb225f4b43bbc35b82aeda2cb33218355.webp"
+      },
+      {
+        "v": "assets/runtime/70152698b4ffa11ce3d5ebb11373cb86222a68971222baf917f45f7ae2da9ef4.webp",
+        "u": "assets/runtime/70152698b4ffa11ce3d5ebb11373cb86222a68971222baf917f45f7ae2da9ef4.webp"
+      },
+      {
+        "v": "assets/runtime/707f05bf4abed25405ca45c5c32bcf95ab7cb3a6dae3e53da29f814a8495665c.webp",
+        "u": "assets/runtime/707f05bf4abed25405ca45c5c32bcf95ab7cb3a6dae3e53da29f814a8495665c.webp"
+      },
+      {
+        "v": "assets/runtime/7c5a5493e84418bc0435013c8605222718923872c15eb46fdd36158d201c0b1e.webp",
+        "u": "assets/runtime/7c5a5493e84418bc0435013c8605222718923872c15eb46fdd36158d201c0b1e.webp"
+      },
+      {
+        "v": "assets/runtime/944d281c6d6bb8e3b92ef682b95e107093bb8c4ba2c63e247dd615750d613ed1.webp",
+        "u": "assets/runtime/944d281c6d6bb8e3b92ef682b95e107093bb8c4ba2c63e247dd615750d613ed1.webp"
+      },
+      {
+        "v": "assets/runtime/98cf9484ee96018b1ddc6d61f30945ce973158002fe31a2be0790e44c6718515.webp",
+        "u": "assets/runtime/98cf9484ee96018b1ddc6d61f30945ce973158002fe31a2be0790e44c6718515.webp"
+      },
+      {
+        "v": "assets/runtime/98f0e13da2ecb0913739d6fbe83026b66746263a9c1dab006ef1b73279b7d8de.png",
+        "u": "assets/runtime/98f0e13da2ecb0913739d6fbe83026b66746263a9c1dab006ef1b73279b7d8de.png"
+      },
+      {
+        "v": "assets/runtime/ae6917bb1aafa71e6a10cfcaa1289f13e265aa7f32d3fb7c1988004bf50f8983.webp",
+        "u": "assets/runtime/ae6917bb1aafa71e6a10cfcaa1289f13e265aa7f32d3fb7c1988004bf50f8983.webp"
+      },
+      {
+        "v": "assets/runtime/b59aa9d4ecfbbae6e62d872c964bce8ec870ed500e7cbc7a7f02bbdd0b93e87e.webp",
+        "u": "assets/runtime/b59aa9d4ecfbbae6e62d872c964bce8ec870ed500e7cbc7a7f02bbdd0b93e87e.webp"
+      },
+      {
+        "v": "assets/runtime/c033e0ef8cca6b516489f4e2aab05dac758c54ea3cf20f246412f08735c2d7fc.png",
+        "u": "assets/runtime/c033e0ef8cca6b516489f4e2aab05dac758c54ea3cf20f246412f08735c2d7fc.png"
+      },
+      {
+        "v": "assets/runtime/c433e0bc2e5a36cc0022eb05150691986b5086b749ceacc556ab71359438d5c4.png",
+        "u": "assets/runtime/c433e0bc2e5a36cc0022eb05150691986b5086b749ceacc556ab71359438d5c4.png"
+      },
+      {
+        "v": "assets/runtime/cbc563ce4d9d0c299eda0acce30ba34b811cc4ac6d4abcf0e2ea066e69278ff5.webp",
+        "u": "assets/runtime/cbc563ce4d9d0c299eda0acce30ba34b811cc4ac6d4abcf0e2ea066e69278ff5.webp"
+      },
+      {
+        "v": "assets/runtime/cd728ce5c1794ec4958ef75c4cdd60a3d513b871bea99e3b526656f14089fd74.webp",
+        "u": "assets/runtime/cd728ce5c1794ec4958ef75c4cdd60a3d513b871bea99e3b526656f14089fd74.webp"
+      },
+      {
+        "v": "assets/runtime/dcf64a43ad6b9e71c24c91fb9b1d7fe8af534497fd421213472bea96e6bc04b5.webp",
+        "u": "assets/runtime/dcf64a43ad6b9e71c24c91fb9b1d7fe8af534497fd421213472bea96e6bc04b5.webp"
+      },
+      {
+        "v": "assets/runtime/e2b04c3eca1871c5e73417674582a09b13de60119ca9bb9c112317232c5049fa.webp",
+        "u": "assets/runtime/e2b04c3eca1871c5e73417674582a09b13de60119ca9bb9c112317232c5049fa.webp"
+      },
+      {
+        "v": "assets/runtime/e49115f3942ea5c5034c81016c61944b5261c8ea410318cb0419b445c990b063.webp",
+        "u": "assets/runtime/e49115f3942ea5c5034c81016c61944b5261c8ea410318cb0419b445c990b063.webp"
+      },
+      {
+        "v": "assets/runtime/fa6d49a717c04651fd7d1afb30b853f63cbaa5bf483e58cb4bfe5ef69fc6ff50.webp",
+        "u": "assets/runtime/fa6d49a717c04651fd7d1afb30b853f63cbaa5bf483e58cb4bfe5ef69fc6ff50.webp"
+      },
+      {
+        "v": "assets/runtime/fc8e6b17bad9088221f79733bd9da97a2ca78387bac1132518f4408dbca43f34.webp",
+        "u": "assets/runtime/fc8e6b17bad9088221f79733bd9da97a2ca78387bac1132518f4408dbca43f34.webp"
+      },
+      {
+        "v": "assets/runtime/fe8e1db21924622a0a3a38bd8fde3197d0f0ef2ba2b48c4665f5569013cd4f1d.png",
+        "u": "assets/runtime/fe8e1db21924622a0a3a38bd8fde3197d0f0ef2ba2b48c4665f5569013cd4f1d.png"
+      },
+      {
+        "v": "assets/runtime/manifest.json",
+        "u": "assets/runtime/manifest.json"
+      },
+      {
+        "v": "client.js",
+        "u": "lib/client.js"
+      },
+      {
+        "v": "index.host.js",
+        "u": "lib/index.js"
+      },
+      {
+        "v": "LICENSE-ARTWORK",
+        "u": "LICENSE-ARTWORK"
+      },
+      {
+        "v": "locale/en.json",
+        "u": "locale/en.json"
+      },
+      {
+        "v": "locale/zh.json",
+        "u": "locale/zh.json"
+      },
+      {
+        "v": "NOTICE",
+        "u": "NOTICE"
+      },
+      {
+        "v": "preview/dark.webp",
+        "u": "preview/dark.webp"
+      },
+      {
+        "v": "preview/light.webp",
+        "u": "preview/light.webp"
+      },
+      {
+        "v": "skin.json",
+        "u": "skin.json"
+      }
+    ],
+    "syncedRef": "15e9aa0bb3a6281d80cee62185c5482b10d46d19",
+    "syncedVersion": "0.1.8",
+    "syncedAt": "2026-10-16T14:48:32Z",
+    "overrides": [
+      {
+        "v": "index.host.js",
+        "why": "整合改动（dsh-maid-scenery v0.2.1）：上游文件在 lib/ 下，../assets/ 指包根；vendor 里放在根下少一层，须为 ./assets/。",
+        "replacements": [
+          [
+            "installSkinAssets(ctx, \"maid-atelier\", new URL(\"../assets/runtime/\", import.meta.url), manifest_default);",
+            "// 整合改动（dsh-maid-scenery v0.2.1）：上游此文件在 lib/index.js，`../assets/` 指向包根；\n\t// 本包把它放在 vendor/maid-atelier/ 根下，少了一层，故改为 `./assets/`。\n\tinstallSkinAssets(ctx, \"maid-atelier\", new URL(\"./assets/runtime/\", import.meta.url), manifest_default);"
+          ]
+        ]
+      }
+    ],
+    "applied": {
+      "index.host.js": "a82554409c025b5266cc10c3e594cbc5ca52ddda"
+    }
+  }
+}
