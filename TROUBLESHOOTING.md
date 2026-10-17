@@ -126,14 +126,16 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
 
 ### 2.7 跟上游：`upstream-sync` 一键拉新（0.2.3 起）
 
-- **背景**：两家 vendor 的原作者都没停更（maid-atelier 与 dsh-video-skin 都在发新版），本包需要对上游保持跟进能力。**不接管上游、不 fork**，对上游零修改内置，跟进靠 `scripts/upstream-sync.mjs`。
-- **用法**（三条子命令）：
+- **症状**：上游两家 vendor（maid-atelier / dsh-video-skin）发了新版，本地包内素材还是旧的；手工比文件又不知道哪些该覆盖、哪些是本地改过的。
+- **原因**：两家 vendor 的原作者都没停更，本包需要对上游保持跟进能力，但**不接管上游、不 fork**，对上游零修改内置——所以跟进只能靠脚本按 manifest 白名单增量对齐。
+- **解法**：跟上游统一走 `scripts/upstream-sync.mjs`：
   ```bash
   node scripts/upstream-sync.mjs check           # 看两家上游有没有新版本（git ls-remote，须带 -c http.proxy）
   node scripts/upstream-sync.mjs init            # 首次建 manifest 白名单（一般不用重跑）
   node scripts/upstream-sync.mjs sync <target>   # 拉新：target = maid-atelier / video-skin（位置参数）
   ```
 - **机制**：manifest 白名单映射（video-skin 9 文件、maid-atelier 58 文件；重命名 `index.js→index.host.js`、`lib/client.js→client.js`、`lib/index.js→index.host.js`；`LICENSE-upstream` 与 `*.flac` 挡在 protect 外）；用 git blob sha1 增量，本地已一致的文件跳过不下载。
+- **验证**：`check` 报无新版即已对齐；`sync` 后再跑一次 `check`，输出应为「本地已一致」；`git status` 里只应出现真正拉新的那几个文件。
 - **相关提交**：本条随 0.2.3 上线。
 
 ### 2.8 sync 把本地整合调整冲掉了（素材路由 404）
@@ -244,6 +246,7 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
 
 - **出厂值**（vendor 写死，本包只补定位）：`right:16px; bottom:16px`、32×32、`transition 220ms`、面板 268px 宽挂底部 58px 处。
 - **存储键**：`localStorage['dsh-maid-scenery-knobs'] = {side, y}`。
+- **验证**：触摸屏按住圆钮拖动不滚聊天记录；拖完松手面板不弹；把圆钮拖到屏幕上半段，面板自动翻到下方且能滚动；清掉 `dsh-maid-scenery-knobs` 后圆钮回到右下角出厂位。
 
 ### 3.7 可信模式徽章与圆钮撞位（已不归本插件管）
 
@@ -260,6 +263,7 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
 - **原因**：① DSH 在 `html[data-windows-titlebar]` 下用 `.frame::before` 预留拖动区，底色直接取 `--dsw-specific-sidebar-fill`；② Windows 下 `[data-rightbar-col]` 本身没底色，实底来自主题给浮层写的 `--dsw-alias-bg-overlay: rgba(13,25,59,.98)`，视频皮肤只半透明化了 `--dsw-alias-bg-base` 与 sidebar-fill，没管 overlay，于是整栏透不上来。
 - **解法（第三版，方向修正）**：老大要的不是「让视频透上来」，而是这两条边**看起来是主题的一部分**——两处都改**实心**深蓝表面、各缝一条金线收边（金只做线不做面），顶栏底色直接取 `--dsw-alias-bg-layer-2`（主题把面板蓝写在这里），右栏顶部加一道殿蓝柔光；`[data-dockkit-pane]` / `[data-dockkit-float]` / `[data-sidebar-right-session]` 都是 DSH 写在 DOM 上的稳定锚点。亮色下换同族冷调瓷白。
 - **注意**：选择器**不再写死 `html` 前缀**（写死过一次，规则空转、改了没生效）；配合深色锁定后只在暗色下生效。
+- **验证**：暗色下顶栏是一条实心深蓝带、右侧栏同族实心面带金线收边（不是「视频透上来」）；切亮色后换冷调瓷白、无残留深色；`document.querySelector('html')` 上没写死前缀的规则在控制台里能查到命中。
 - **相关提交**：`3759e27`。
 
 ### 3.9 侧边栏展开后按钮消失 / 输入框内图片显示异常（待核）
@@ -274,6 +278,7 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
 - **症状**：没装皮肤管理器时，立绘／字体／导航等定制项掉回样式表默认。
 - **原因**：登记项在本包 `client.js`，执行一向由皮肤管理器读自己的偏好表再回调 `apply`；只装本包时没人调用。
 - **解法**（0.2.1 起）：本包启动时自己读同一份 `localStorage['dsh.skin-manager.preferences.v2']` 的 `maid-atelier` 段并投影一次，管理器上线后照旧接管（两边同源，不会互相覆盖）。出厂基线集中在 `client.js` 的 `SKIN_DEFAULTS`（立绘默认关、对话区字体默认 Georgia 衬线 #22）——**改「新装用户的默认样子」只改这一处**。
+- **验证**：卸掉皮肤管理器、只装本包，重装后立绘／字体／导航仍是上一次的设定（或出厂基线），不掉回样式表默认；`localStorage['dsh.skin-manager.preferences.v2']` 里的 `maid-atelier` 段与本包投影结果一致。
 - **相关提交**：`70b2427`。
 
 ---
