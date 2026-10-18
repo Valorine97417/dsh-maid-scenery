@@ -56,6 +56,8 @@
 
 - **症状**：装完后界面卡死、进不去。
 - **原因**：客户端半边（`client.js`）或主题客户端在启动链上出问题。
+- **原因 B（2026-10-13 实案，同类现场）**：包目录在场、无崩溃日志、`main` 半边干净、无 BOM、`node --check` 通过，界面却永久停在 boot 页「无限加载」。真因是**自己加的 11 行 `try/catch` 诊断包装**——它被套在 `window.__ModuleLoader__.load` 外层，把启动链的正常返回/异常语义一起改了，于是加载既不成功也不报错。排除重复装配与语法问题之后才想到去看「最近有没有人为加过包装」。
+- **排查顺序（照这个走，别一上来就卸载）**：① 先按上面的「解法」把 `dsh.profile.bundles` 里 `"dsh-maid-scenery"` 摘掉，确认能回原生界面 → ② 看有没有 `[scenery] client 半边已执行 <ISO 时间>` 这类路标（没有 = 客户端脚本没走到自己那行）→ ③ 有诊断包装就先回滚成 git 原版，只在原版上加**一行**输出型路标（提交 `6fc736d`：`chore(client): 客户端半边加一行送达路标（排查无限加载用）`）。
 - **解法**：把 `$DSH_HOME/profiles/desktop/package.json` 的 `dsh.profile.bundles` 里 `"dsh-maid-scenery"` 删掉，重启即回原生界面（不用卸载包）。
 - **验证方式**：重启后界面恢复原生外观即可。
 
@@ -164,6 +166,15 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
 - **解法**：脚本已内置（`PROXY = 7890`，可用 `HTTPS_PROXY` 环境变量覆盖）——`git ls-remote` 与 raw.githubusercontent.com 请求都走 `http://127.0.0.1:7890`。**自己写脚本时别忘这条**。
 - **验证方式**：`git -c http.proxy=http://127.0.0.1:7890 ls-remote https://github.com/Small-tailqwq/dsh-deep-whale.git HEAD` 秒回。
 - **相关提交**：本条随 0.2.3 上线。
+
+### 2.10 皮肤管理器「发现 0 个皮肤」：默认 profile 解析到了 web，不是 desktop
+
+- **症状**：皮肤管理面板里「发现 0 个皮肤」，明明 `maid-atelier` 就装在 profile 里；面板上看不到任何可选项，日志也没有报错。顺带两个易误判的现场：候选列表打印出来是 `{}`（看着像空，其实是 `Map` 被直接打印），以及某个皮肤目录在场却仍不入选。
+- **原因**：`discoverInstalledSkins` 默认走 `resolveProfilePatch()`，在本机把它解析成了 `C:\Users\Kayle\.dsh\profiles\web\cordis.patch.yml` —— **`web` 而不是 `desktop`**，于是从一份跟当前宿主无关的 patch 文件里找皮肤，一个也找不到。另两处：`Map` 直接 `console.log` 打印成 `{}` 会让人误以为集合为空（要看 `[...map.entries()]`）；`catalogEntry` 要求 `manifest.package` 与已装目录 `name` 相等，名字不一致的目录会被静默过滤。
+- **解法**：调用处**显式传 profile**（不要依赖 `resolveProfilePatch()` 的默认推断）；排查时把 `Map` 摊成数组看真实内容；比对 `manifest.package` 与已装目录名，不一致就按实际名修正 manifest。
+- **验证**：面板从「发现 0 个皮肤」变为列出已装皮肤并可切换；`manifest.package` 与目录名一致后该皮肤出现在候选里。
+- **证据**：记忆 `0mv6stdrh-be76237360774beea42ab3a5a5`（2026-10 上旬，本机实测）。
+- **教训**：「默认路径」在同时存在多个 profile 的机器上等于随机；这类函数一律要求显式传参。
 
 ---
 
