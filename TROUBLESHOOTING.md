@@ -97,7 +97,7 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
   ```
   $DSH_HOME/dsh-maid-scenery/music/
   ```
-  本地本机实测即 `C:\Users\Kayle\.dsh\dsh-maid-scenery\music\`。包内 `vendor/video-skin/assets/` 降级成**镜像**：每次启动同步一遍——① 收养包内遗留音频进正本 → ② 按正本镜像回包内（同卷走**硬链接**零额外空间，跨卷退回复制）→ ③ 清掉正本已删的旧镜像。逻辑全在 `lib/music.js`。
+  本地本机实测即 `%USERPROFILE%\.dsh\dsh-maid-scenery\music\`。包内 `vendor/video-skin/assets/` 降级成**镜像**：每次启动同步一遍——① 收养包内遗留音频进正本 → ② 按正本镜像回包内（同卷走**硬链接**零额外空间，跨卷退回复制）→ ③ 清掉正本已删的旧镜像。逻辑全在 `lib/music.js`。
 - **验证方式**：`$DSH_HOME/dsh-maid-scenery/music-mirror.json` 记录本轮镜像名单；`ls` 正本与包内 `assets/` 应一致；面板标签报「背景音乐 · N 首」。
 - **注意**：`music-mirror.json` 里的名字在**收养阶段会被跳过**——否则"删歌"永远删不掉。
 
@@ -288,7 +288,7 @@ dsh plugin --profile desktop add "github:Valorine97417/dsh-maid-scenery"
 | 东西 | 位置 |
 | --- | --- |
 | 本仓库 | `D:\DeepSeek Harness\Works\dsh-maid-scenery`（远端 `Valorine97417/dsh-maid-scenery`，**私有**） |
-| `$DSH_HOME`（本机实测） | `C:\Users\Kayle\.dsh` |
+| `$DSH_HOME`（本机实测） | `%USERPROFILE%\.dsh` |
 | profile 依赖 | `$DSH_HOME/profiles/desktop/package.json` → `"dsh-maid-scenery": "link:D:/DeepSeek Harness/Works/dsh-maid-scenery"` |
 | 界面卡死保命位 | 同上文件的 `dsh.profile.bundles` 里的 `"dsh-maid-scenery"` 一行 |
 | 视频层配置 | `$DSH_HOME/dsh-video-skin.json`；可调键 `boot.enabled`、`background.{music, musicVolume}` 与 `OVERRIDE_KEYS = [surface, surfaceLight, veil, veilLight, musicVolume]` |
